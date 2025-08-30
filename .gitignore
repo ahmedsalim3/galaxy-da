@@ -173,3 +173,6 @@ data/source/llustrisTNG/
 data/target/images_gz2/
 data/target/gz2_hart16.csv
 data/target/gz2_filename_mapping.csv
+
+# Checkpoint files
+*.pt

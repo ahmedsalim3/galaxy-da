@@ -391,7 +391,6 @@ def train(
 
                         DA_loss_ = sinkhorn_loss(sf, tf, blur=max(dynamic_blur_val, 0.01))
 
-                        lambda_DA = 0.005
                         lambda_DA_ramped = min(lambda_DA, lambda_DA * float(epoch + 1 - warmup) / 5.0) if epoch >= warmup else 0.0
                         combined_loss = classification_loss_ + lambda_DA_ramped * DA_loss_
 
@@ -548,9 +547,9 @@ def train(
         js_array = np.array(js_distances)
         valid_mask = ~np.isnan(js_array) & np.isfinite(js_array)
         if np.any(valid_mask):
-            valid_steps = np.array(steps)[valid_mask]
             valid_js = js_array[valid_mask]
-            ax.plot(valid_steps, valid_js, linewidth=3, color=colors['js_distance'], alpha=0.9)
+            x = np.arange(1, len(valid_js) + 1)
+            ax.plot(x, valid_js, linewidth=3, color=colors['js_distance'], alpha=0.9)
             if warmup > 0:
                 ax.axvline(x=warmup, color='red', linestyle='--', alpha=0.8, linewidth=2)
             ax.set_xlabel('Epoch', fontsize=12, fontweight='bold')
@@ -604,10 +603,10 @@ def train(
         valid_mask = ~np.isnan(blur_array) & np.isfinite(blur_array)
         
         if np.any(valid_mask):
-            valid_steps = np.array(steps)[valid_mask]
             valid_blur = blur_array[valid_mask]
+            x = np.arange(1, len(valid_blur) + 1)
             
-            ax.plot(valid_steps, valid_blur, linewidth=3, color=colors['blur'], alpha=0.9)
+            ax.plot(x, valid_blur, linewidth=3, color=colors['blur'], alpha=0.9)
             ax.axhline(y=0.01, color='red', linestyle='--', alpha=0.8, linewidth=2, label='Min Blur Threshold')
             
             if warmup > 0:
@@ -635,10 +634,10 @@ def train(
         valid_mask = ~np.isnan(dist_array) & np.isfinite(dist_array)
         
         if np.any(valid_mask):
-            valid_steps = np.array(steps)[valid_mask]
             valid_dist = dist_array[valid_mask]
+            x = np.arange(1, len(valid_dist) + 1)
             
-            ax.plot(valid_steps, valid_dist, linewidth=3, color=colors['distance'], alpha=0.9)
+            ax.plot(x, valid_dist, linewidth=3, color=colors['distance'], alpha=0.9)
             
             if warmup > 0:
                 ax.axvline(x=warmup, color='red', linestyle='--', alpha=0.8, linewidth=2)
@@ -690,18 +689,30 @@ if __name__ == "__main__":
     set_all_seeds(config.get("seed", 42))
     config["device"] = device
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    save_dir = (
-        f"{config['output_dir'].rstrip('/')}/"
-        f"{config['model']['name']}"
-        f"_N{config['model']['N']}"
-        f"_ep{config['parameters']['epochs']}"
-        f"_seed{config['seed']}"
-        f"_{config['parameters']['loss_type']}"
-        f"_{timestamp}"
+
+    model_name_cfg = config['model']['name']
+    if model_name_cfg == "enn":
+        model_id = f"{model_name_cfg}_N{config['model'].get('N', 4)}"
+    elif model_name_cfg == "resnet":
+        model_id = f"{config['model'].get('arch', 'resnet50')}"
+    else:
+        model_id = model_name_cfg
+
+    params = config['parameters']
+    bs = params.get('batch_size')
+    lr = params.get('lr')
+    wd = params.get('weight_decay')
+    loss_tag = params.get('loss_type')
+    warm = params.get('warmup')
+    da = params.get('lambda_DA', 0.005)
+    seed = config.get('seed')
+    save_dir = os.path.join(
+        (config.get('output_dir') or 'experiments').rstrip('/'),
+        f"{model_id}_bs{bs}_lr{lr}_wd{wd}_{loss_tag}_warm{warm}_da{da}_seed{seed}_{timestamp}"
     )
 
     os.makedirs(save_dir, exist_ok=True)
-    logger = Logger(str(save_dir + "logs.log"))
+    logger = Logger(os.path.join(save_dir, "logs.log"))
     src_train_dataloader, src_val_dataloader, tgt_train_dataloader, tgt_val_dataloader = load_data(config)
     model, optimizer, scheduler = load_model(config)
     if config["data"].get("use_class_weights", False):
@@ -723,9 +734,11 @@ if __name__ == "__main__":
             alpha_arr = np.array(config["parameters"]["alpha"], dtype=float)
             alpha_weights = torch.tensor(alpha_arr, dtype=torch.float32, device=device)
         elif class_weights is not None:
+            logger.info("using class weights as alpha weights")
             # normalize class_weights to sum 1 as alpha prior
             alpha_weights = class_weights.to(device)
             alpha_weights = alpha_weights / torch.sum(alpha_weights)
+            logger.info(f"alpha weights: {alpha_weights}")
         else:
             # uniform alpha
             # need number of classes -> infer from dataset
