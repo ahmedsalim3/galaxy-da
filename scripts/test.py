@@ -78,7 +78,7 @@ def load_model(config: dict, config_path: str, device: str) -> torch.nn.Module:
         model = enn_nebula_galaxy(input_size=input_size, N=N, dihedral=dihedral)
     else:
         raise ValueError("invalid model name")
-    ckpt = os.path.join(os.path.dirname(os.path.abspath(config_path)), "best_model_val_acc.pt")
+    ckpt = os.path.join(os.path.dirname(os.path.abspath(config_path)), "final_model.pt")
     if not os.path.isfile(ckpt):
         raise FileNotFoundError(ckpt)
     

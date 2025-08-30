@@ -1,0 +1,41 @@
+best_DA_epoch: 18
+best_DA_loss: 0.4612740814685822
+best_classification_loss: 0.04068599417805672
+best_classification_loss_epoch: 9
+best_total_val_epoch: 9
+best_total_val_loss: 0.04411522224545479
+best_val_acc: 57.74193548387097
+best_val_epoch: 55
+data:
+  data_root: ./data
+  normalize: true
+  use_class_weights: true
+  val_size: 0.2
+device: cuda
+final_loss: 0.011962851183488965
+model:
+  input_size:
+  - 128
+  - 128
+  name: cnn
+  num_classes: 3
+output_dir: experiments
+parameters:
+  alpha:
+  - 0.33
+  - 0.33
+  - 0.34
+  batch_size: 64
+  early_stopping: 12
+  epochs: 80
+  lambda_DA: 0.005
+  loss_type: focal
+  lr: 1e-3
+  lr_decay: 0.1
+  milestones:
+  - 45
+  - 65
+  report_interval: 1
+  warmup: 3
+  weight_decay: 1e-4
+seed: 42

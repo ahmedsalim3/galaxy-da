@@ -1,6 +1,5 @@
 seed: 42
-
-output_dir: "./outputs"
+output_dir: "experiments"
 data:
   data_root: "./data"
   val_size: 0.2
