@@ -34,6 +34,9 @@ class Logger:
                 self.log_level = logging.INFO
 
             self.log_file = os.environ.get("LOG_FILE", log_file)
+        else:
+            if log_file is not None:
+                self.log_file = log_file
 
     def info(self, message):
         """
@@ -74,6 +77,9 @@ class Logger:
         """
         if self.log_level <= logging.CRITICAL:
             self.dump_log(f"💥 {message}")
+    
+    def set_log_file(self, log_file: str):
+        self.log_file = log_file
 
     def dump_log(self, message):
         timestamp = str(datetime.now())[2:-7]
