@@ -30,7 +30,8 @@ Each entry in the source dataset contains the following information:
 
 ## Target Dataset (Galaxy Zoo 2)
 
-The target dataset is constructed from the [Galaxy Zoo 2 (GZ2)][gz2hart] project, using the debiased vote fractions provided by [Hart et al. (2016)][gz2hart-paper].
+The target dataset is constructed from the [Galaxy Zoo 2 (GZ2)][gz2hart] project, using the debiased vote fractions provided by [Hart et al. (2016)][gz2hart-paper]. It contains morphology labels for real galaxies observed in the Sloan Digital Sky Survey (SDSS). The dataset includes three morphology classes: elliptical, spiral, and irregular galaxies. Additional labels for mass, star formation, and AGN presence have been added to identify galaxies hosting active galactic nuclei (AGN) based on the catalog from [Schawinski et al. (2010)](https://adsabs.harvard.edu/abs/2010ApJ...711..284S), [Lintott et al. (2008)](https://adsabs.harvard.edu/abs/2008MNRAS.389.1179L), and [Lintott et al. (2011)](https://adsabs.harvard.edu/abs/2011MNRAS.410..166L).
+
 
 ### Methodology
 
