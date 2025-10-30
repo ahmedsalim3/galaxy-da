@@ -1,0 +1,48 @@
+# --- Baseline (Source-Only) Configuration ---
+# Trains a model only on the source domain data.
+# This is the "lower bound" benchmark with no domain adaptation.
+
+experiment_name: "baseline_source_only"
+seed: 42
+
+data:
+  source_img_dir: "data/source/galaxy_images_rgb"
+  source_labels: "data/source/source_galaxy_labels.csv"
+  # target_img_dir: "data/target/gz2_images"
+  # target_labels: "data/target/gz2_galaxy_labels.csv"
+  # # NOTE: we don't have to pass target_img_dir and target_labels,
+  # # as in the baseline we are not using the target domain for training. (No DA)
+  # # I put it here if you want to train with diagnostics analysis, as it will be needed.
+  # # For example: python3 scripts/run_train.py --config configs/baseline.yml --use_diagnostics --eval_interval 5
+  # if you are using this, for diagnostics analysis, you need to set this line to True in run_train.py
+  # line:  use_target = config["training"]["method"] != "baseline"  
+  include_rotations: false
+  shared_norm: false
+  image_size: [28, 28]
+  batch_size: 128
+  val_size: 0.2
+  num_workers: 4
+
+model:
+  type: "cnn"  
+
+training:
+  method: "baseline"
+  num_epochs: 100
+  lr: 1e-3
+  optimizer: "adamw"
+  weight_decay: 1e-2
+  max_norm: 10.0
+  criterion: "focal" # "cross_entropy"
+  use_class_weights: true
+  class_weight_method: "effective"
+  class_weight_beta: 0.9999
+  focal_gamma: 2.0
+  focal_alpha: null
+  focal_reduction: "mean"
+
+  early_stopping_patience: 10
+  early_stopping_metric: "train_loss"
+
+output:
+  root_dir: "experiments"

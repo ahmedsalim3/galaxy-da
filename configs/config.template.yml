@@ -1,0 +1,182 @@
+
+# This file documents all available configuration options for domain adaptation
+# experiments. Copy this file and modify values as needed for your experiments.
+
+# --------------------
+# Experiment Settings
+# --------------------
+
+experiment_name: "base.template" # the name of the experiment
+seed: 42 # random seed for reproducibility 
+
+output:
+  # Base directory for all experiment outputs
+  root_dir: "experiments"
+  # setting this will create subdirectories for checkpoints and logs
+  #   - experiments/experiment_name/logs/          (training metrics CSV)
+  #   - experiments/experiment_name/checkpoints/   (model weights)
+  #   - experiments/experiment_name/figures/       (plots and visualizations)
+
+
+# --------------------
+# Data Configuration
+# --------------------
+
+data:
+  # --- Source Domain ---
+  # path to source domain images
+  source_img_dir: "data/source/galaxy_images_rgb"
+  # path to source domain labels, can be a CSV or JSON file
+  source_labels: "data/source/source_galaxy_labels.csv"
+
+  include_rotations: false # data augmentation for source domain
+  # NOTE: include_rotations=True will include 8 augmented images for each original image.
+  # The augmented images are created by rotating the original image by 0, 90, 180, and 270 degrees 
+  # and flipping the image horizontally. It will result in 25856 total images for the source domain.
+  
+  # Disabling it will result in 3232 total original images for the source domain.
+
+  # --- Target Domain ---
+  # path to target domain images
+  target_img_dir: "data/target/gz2_images"  # for GZ2 dataset
+  # target_img_dir: "data/target/gz_desi"   # for DESI dataset
+  # path to target domain labels, can be a CSV or JSON file
+  target_labels: "data/target/gz2_galaxy_labels_master.csv" # for GZ2 full dataset
+  # target_labels: "data/target/gz2_galaxy_labels.csv"      # for GZ2 top N dataset
+  # target_labels: "data/target/gz_desi_labels.csv"         # for DESI dataset
+
+  # Optional: Provide precomputed normalization statistics
+  # The below examples were calculated using the nebula/data/normalization.py script.
+  # Choose the one that matches your dataset.
+  # If not provided, will be computed automatically
+  source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
+  source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
+  
+  # target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]    # GZ2 mean from data/target/gz2_galaxy_labels_master.csv
+  # target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]     # GZ2 std from data/target/gz2_galaxy_labels_master.csv
+  
+  # target_mean: [0.042620349675416946, 0.03869814798235893, 0.03188521787524223]   # Full GZ2 mean from data/target/gz2_galaxy_labels_master.csv
+  # target_std: [0.08519686758518219, 0.0742286816239357, 0.07386281341314316]      # Full GZ2 std from data/target/gz2_galaxy_labels_master.csv
+  
+  # target_mean: [0.1059635579586029, 0.09898710995912552, 0.09673696756362915]    # DESI mean from data/target/gz_desi_labels.csv
+  # target_std: [0.09570237994194031, 0.09059888124465942, 0.08683059364557266]    # DESI std from data/target/gz_desi_labels.csv
+  
+  # source_mean: [0.485, 0.456, 0.406] # ImageNet mean
+  # source_std: [0.229, 0.224, 0.225] # ImageNet std
+  # target_mean: [0.485, 0.456, 0.406] # ImageNet mean
+  # target_std: [0.229, 0.224, 0.225] # ImageNet std
+
+  # Normalization strategy
+  shared_norm: false
+  # Use same normalization statistics for source and target
+  # true: Normalize both domains using source statistics:
+  #       target_mean = source_mean, target_std = source_std
+
+  # false: Use separate statistics
+
+  # Resize all images to this size [height, width]
+  image_size: [120, 120]
+  
+
+  # Number of samples per batch
+  batch_size: 128
+  
+  # Fraction of data to use for validation,
+  # NOTE: we perform a stratified split to maintain class proportions.
+  # The idea is to split the dataset into train and val sets while maintaining the class proportions
+  # Example:
+  # Suppose our 3 classes have the following counts: [10, 20, 70]
+  # With val_size = 0.2, the validation set will get 20% from each class:
+  #   Class 0: 2 val, 8 train
+  #   Class 1: 4 val, 16 train
+  #   Class 2: 14 val, 56 train
+  val_size: 0.2
+
+  # Number of parallel data loading workers
+  # 0 = load in main process, >0 = parallel loading
+  num_workers: 4
+
+
+# Model architecture
+# Currently only: 'cnn'
+model:
+  type: "cnn"
+
+
+training:
+  # ------------------------------------------------ BASE CONFIG ------------------------------------------------
+
+  # This base configs are mainly general, so they are common for all methods.
+  num_epochs: 50            # Total number of training epochs, any positive integer value
+  lr: 1e-3                  # Learning rate, any positive float value
+  optimizer: "adamw"        # 'adam', 'adamw', 'sgd'
+  weight_decay: 1e-2        # Weight decay for regularization
+  max_norm: 10.0            # Gradient clipping threshold, used in the backward pass to prevent exploding gradients (0 = no clipping)
+  criterion: "cross_entropy"  # Loss function: 'cross_entropy', 'focal'
+
+  # Class weighting
+  use_class_weights: false          # True to apply class weights, weights will be computed based on the class distribution in the source domain and applied to the loss function (criterion)
+  class_weight_method: "effective"  # 'effective' or 'balanced' (only if use_class_weights=True)
+  class_weight_beta: 0.9999         # Only used with 'effective' method (only if class_weight_method="effective")
+
+  # Focal loss parameters (if criterion='focal')
+  focal_gamma: 2.0
+  focal_alpha: null         # Options: null | float | [per-class weights] | "class_weights" 
+  # NOTE: class_weights will ONLY be applied if use_class_weights=True
+
+  focal_reduction: "mean"
+
+  # Early stopping configuration
+  early_stopping_patience: 5       # Options: None | integer (stop if validation metric doesn't improve after these many epochs)
+  # NOTE: (Metric to monitor for early stopping)
+  
+  early_stopping_metric: "train_loss"  # Options: "train_loss"| "ce_loss" | "da_loss" | "f1" | "accuracy" 
+  # NOTE: "f1" and "accuracy" require target_loader to be provided (doesn't work in baseline where we only pass source loader)
+
+
+  # ------------------------------------------------ DA METHODS CONFIG ------------------------------------------------
+  
+  # Choose the domain adaptation method to use, the rest of the parameters are specific to the method
+  method: "baseline"  # Options: 'baseline', 'adversarial', 'sinkhorn', 'mmd', 'energy'
+
+  # Adversarial DA parameters (ONLY used if method='adversarial')
+  lambda_grl: 0.25                   # Gradient reversal scaling
+  # latent_dim: null                   # Dimension of latent space from feature extractor, automatically calculated from the model if not provided
+  domain_hidden_dim: 256             # Hidden units in domain classifier
+  use_projection: true               # Whether to use a projection layer
+  domain_projection_dim: 128         # Dimension of domain projection layer (only if use_projection=True)
+
+  # OT-based DA parameters ( ONLY used if method in ["sinkhorn", "mmd", "energy"])
+  # Fixed weight for the domain adaptation loss
+  # Total Loss = L_CE + (lambda_da * L_DA)
+  lambda_da: 0.1                     # Domain adaptation loss weight
+  sinkhorn_blur: 10.0                # Sinkhorn regularization parameter
+  sinkhorn_p: 2                       # Sinkhorn distance exponent
+
+  # Trainable weights and sigma schedule ( ONLY used if method in ["sinkhorn", "mmd", "energy"])
+  use_trainable_weights: false        # True to learn importance weights for OT (if True, set a value for eta_1_init and eta_2_init)
+  eta_1_init: 0.1                     # Initial eta_1 for trainable weights
+  eta_2_init: 1.0                     # Initial eta_2 for trainable weights
+
+  use_sigma_schedule: false           # True to apply schedule to sigma for OT (if True, set a value for sigma_schedule_type)
+
+  sigma_schedule_type: "exponential"  # Options: 'exponential' | 'linear' | 'cosine' | 'step' | 'polynomial' | 'constant'
+  # Supported schedules:
+        # - exponential: sigma = sigma_initial_blur * (sigma_decay_rate ** epoch)
+        # - linear: sigma = sigma_initial_blur - (sigma_initial_blur - sigma_final_blur) * (epoch / num_epochs)
+        # - cosine: sigma = sigma_final_blur + 0.5 * (sigma_initial_blur - sigma_final_blur) * (1 + cos(pi * epoch / num_epochs))
+        # - step: sigma = sigma_initial_blur * (sigma_step_gamma ** (epoch // sigma_step_size))
+        # - polynomial: sigma = (sigma_initial_blur - sigma_final_blur) * (1 - epoch/num_epochs)^sigma_poly_power + sigma_final_blur
+        # - constant: sigma = sigma_initial_blur (no decay)
+  sigma_initial_blur: 10.0
+  sigma_decay_rate: 0.6          # for long training use 0.9-0.95
+  sigma_final_blur: 1.0
+  sigma_min_blur: 0.01            # Minimum blur floor to prevent numerical underflow
+  # IMPORTANT: For long training (>50 epochs) with exponential decay:
+  # - Use milder decay rate (0.9-0.95) OR rely on sigma_min_blur floor
+  # - Tutorial used 6 epochs where 0.6^6 ≈ 0.047 is safe
+  # - For 100 epochs: 0.6^100 → 0 (underflow!), but 0.95^100 ≈ 0.0059 (OK)
+  
+  sigma_step_size: 2
+  sigma_step_gamma: 0.5
+  sigma_poly_power: 2.0

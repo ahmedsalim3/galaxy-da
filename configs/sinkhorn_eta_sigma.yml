@@ -1,0 +1,90 @@
+# --- Sinkhorn (Trainable Weights + Sigma Schedule) Configuration ---
+# This is the most advanced method:
+# 1. Uses Trainable Weights (like sinkhorn_trainable.yaml)
+# 2. Also uses Sigma Scheduling: The 'sinkhorn_blur' (sigma) is
+#    not fixed. It anneals (decreases) over epochs.
+#    Starts high (e.g., 10.0, MMD-like, stable) and
+#    ends low (e.g., 1.0, OT-like, precise).
+
+experiment_name: "sinkhorn_sigma_schedule"
+seed: 42
+
+data:
+  source_img_dir: "data/source/galaxy_images_rgb"
+  source_labels: "data/source/source_galaxy_labels.csv"
+  target_img_dir: "data/target/gz2_images"
+  target_labels: "data/target/gz2_galaxy_labels.csv" # This around 2568 images
+  # target_labels: "data/target/gz2_galaxy_labels_master.csv" # around 6416 images
+  # target_labels: "data/target/gz2_galaxy_labels_master.json" # around 20,000 images
+  source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
+  source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
+  target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]
+  target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]
+  include_rotations: false
+  shared_norm: false
+  image_size: [28, 28]
+  batch_size: 128
+  val_size: 0.2
+  num_workers: 4
+
+model:
+  type: "cnn"
+  
+
+training:
+  # --- Core Method ---
+  method: "sinkhorn"
+  num_epochs: 10
+  lr: 1e-3
+  optimizer: "adamw"
+  weight_decay: 1e-2
+  max_norm: 10.0
+  criterion: "focal" # "cross_entropy" | "focal"
+  use_class_weights: true
+  class_weight_method: "effective"
+  class_weight_beta: 0.9999
+  focal_gamma: 2.0
+  focal_alpha: "class_weights"
+  focal_reduction: "mean"
+
+  early_stopping_patience: 10
+  early_stopping_metric: "train_loss"
+  
+  # --- DA Loss Specific ---
+  sinkhorn_p: 2
+  
+  # --- Weighting Strategy ---
+  # true: Learn weights eta_1 and eta_2
+  use_trainable_weights: true
+  # true: Anneal the 'sinkhorn_blur' (sigma) parameter
+  use_sigma_schedule: true
+  
+  # --- Trainable Weights (if use_trainable_weights == true) ---
+  eta_1_init: 0.1
+  eta_2_init: 1.0
+  
+  # --- Sigma Schedule (if use_sigma_schedule == true) ---
+  # Schedule type: 'exponential', 'linear', 'cosine', 'step', 'polynomial', 'constant'
+  sigma_schedule_type: "exponential"
+  
+  # Initial blur value (at epoch 0)
+  sigma_initial_blur: 10.0
+  # Final blur value (at last epoch) - used by 'linear', 'cosine', 'polynomial'
+  sigma_final_blur: 1.0
+  
+  # Minimum blur
+  sigma_min_blur: 0.0
+  
+  # For 'exponential': sigma = initial * (decay_rate ** epoch)
+  sigma_decay_rate: 0.95
+  
+  # For 'step': sigma = initial * (gamma ** (epoch // step_size))
+  # sigma_step_size: 2
+  # sigma_step_gamma: 0.5
+  
+  # For 'polynomial': sigma = (initial - final) * (1 - epoch/num_epochs)^power + final
+  # sigma_poly_power: 2.0
+
+output:
+  root_dir: "experiments"
+  save_best: true

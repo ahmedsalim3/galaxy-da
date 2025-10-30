@@ -1,0 +1,67 @@
+# --- Adversarial (DANN) Configuration ---
+# Trains a model using Domain-Adversarial Neural Networks (DANN).
+# A domain classifier tries to distinguish source vs. target features.
+# The feature extractor is trained to *fool* this classifier via a
+# Gradient Reversal Layer (GRL), forcing it to learn domain-invariant features.
+
+experiment_name: "dann_adversarial"
+seed: 42
+
+data:
+  source_img_dir: "data/source/galaxy_images_rgb"
+  source_labels: "data/source/source_galaxy_labels.csv"
+  target_img_dir: "data/target/gz2_images"
+  target_labels: "data/target/gz2_galaxy_labels.csv"
+  source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
+  source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
+  target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]
+  target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]
+
+  include_rotations: false
+  shared_norm: false
+  image_size: [28, 28]
+  batch_size: 128
+  val_size: 0.2
+  num_workers: 4
+
+model:
+  type: "cnn"  
+
+training:
+  # --- Core Method ---
+  method: "adversarial"
+  num_epochs: 100
+  lr: 1e-3
+  optimizer: "adamw"
+  weight_decay: 1e-2
+  max_norm: 10.0
+  criterion: "focal" # "cross_entropy" | "focal"
+  use_class_weights: true
+  class_weight_method: "effective"
+  class_weight_beta: 0.9999
+  focal_gamma: 2.0
+  focal_alpha: null
+  focal_reduction: "mean"
+  
+  early_stopping_patience: 10
+  early_stopping_metric: "train_loss"
+  
+  # --- DANN Specific ---
+  # Strength of the gradient reversal (lambda_grl)
+  # Higher values = more emphasis on fooling the domain classifier.
+  # parameter tune (e.g., 0.1 to 1.0)
+  lambda_grl: 0.25
+  
+  # --- Domain Classifier Architecture ---
+  # Hidden layer dimension for the domain classifier
+  domain_hidden_dim: 256
+  # Use a projection layer before the domain classifier
+  # Use projection (6272 -> 128 for 28x28 images)
+  use_projection: true
+  # Dimension of the projection layer (if use_projection is true)
+  domain_projection_dim: 128
+  # Note: 'latent_dim' is inferred automatically from the model in run_train.py
+
+output:
+  root_dir: "experiments"
+  save_best: true
