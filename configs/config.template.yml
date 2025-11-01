@@ -109,6 +109,7 @@ training:
 
   # This base configs are mainly general, so they are common for all methods.
   num_epochs: 50            # Total number of training epochs, any positive integer value
+  warmup_epochs: 0           # Number of epochs to warmup the model before starting the DA loss, any positive integer value
   lr: 1e-3                  # Learning rate, any positive float value
   optimizer: "adamw"        # 'adam', 'adamw', 'sgd'
   weight_decay: 1e-2        # Weight decay for regularization
