@@ -16,7 +16,8 @@ output:
   #   - experiments/experiment_name/logs/          (training metrics CSV)
   #   - experiments/experiment_name/checkpoints/   (model weights)
   #   - experiments/experiment_name/figures/       (plots and visualizations)
-
+  log_level: 10 # 10 = DEBUG, 20 = INFO, 30 = WARNING, 40 = ERROR, 50 = CRITICAL
+  # logs.log will be saved under root_dir
 
 # --------------------
 # Data Configuration
@@ -119,11 +120,49 @@ training:
   class_weight_method: "effective"  # 'effective' or 'balanced' (only if use_class_weights=True)
   class_weight_beta: 0.9999         # Only used with 'effective' method (only if class_weight_method="effective")
 
-  # Focal loss parameters (if criterion='focal')
+  # Focal loss parameters (only used if criterion='focal')
+  # ---------------------------------------------------------------------------------------
+  # focal_gamma:
+  #   This is the focusing parameter γ (gamma), it controls how much to focus on hard examples
+  #   - Higher Y >= 2.0: increases the focus on misclassified examples.
+  #   - Lower Y = ~1.0: behaves closer to CrossEntropy.
+  #   - Y = 0.0: equivalent to standard CrossEntropy
   focal_gamma: 2.0
-  focal_alpha: null         # Options: null | float | [per-class weights] | "class_weights" 
-  # NOTE: class_weights will ONLY be applied if use_class_weights=True
 
+  # focal_alpha:
+  #   α (alpha) class weighting in focal loss, 
+  #    it controls class-level balancing 
+  #    α_t in the original focal loss paper 
+  #    by Tsung-Yi Lin et al., 2018 https://arxiv.org/pdf/1708.02002).
+  #
+  #   Possible values:
+  #     null  → no alpha weighting (treat all classes equally)
+  #     float → same scalar applied to all classes (e.g., 0.25 for rare class, 0.75 for others)
+  #     [list] → custom per-class alpha weights (must be a length of 3, aka the number of classes)
+  #     "class_weights" → automatically use computed class_weights as alpha_t
+  #
+  #   IMPORTANT:
+  #     - If focal_alpha == "class_weights" and use_class_weights=True,
+  #         then the same computed class weights are passed to α_t (recommended for imbalanced data)
+  #     - If you instead want to apply weights like in standard CrossEntropyLoss,
+  #         set focal_alpha = null and use_class_weights=True (weights will be passed)
+  #
+  #   Summary:
+  #     focal_alpha = "class_weights" → use α_t balancing (original focal loss behavior)
+  #     focal_alpha = null + use_class_weights=True → use CE-style weighting (rarely used in focal loss)
+  #
+  focal_alpha: null   # Options: null | float | [per-class weights] | "class_weights"
+  
+  # examples:
+  # focal_alpha: "class_weights"
+  # focal_alpha: [0.25, 0.75, 0.75] # per-class alpha weights, classes 
+  # focal_alpha: 0.25
+
+  # NOTE:
+  #   class_weights are computed automatically based on class imbalance when use_class_weights=True.
+  #   Setting focal_alpha="class_weights" ensures they are applied to α_t, not as CE weights.
+
+  # Reduction method for focal loss ('mean' or 'sum')
   focal_reduction: "mean"
 
   # Early stopping configuration

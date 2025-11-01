@@ -98,32 +98,81 @@ class BaseTrainer:
 
     def _build_criterion(self, class_weights=None) -> nn.Module:
         crit_name = self.config.criterion
-        if class_weights is not None:
-            logger.info(f"Adding class weights to {crit_name} loss function")
         if crit_name == "cross_entropy":
-            return nn.CrossEntropyLoss(weight=class_weights)
-        elif crit_name == "focal":
-            if (
-                isinstance(self.config.focal_alpha, str)
-                and self.config.focal_alpha == "class_weights"
-            ):
-                return FocalLoss(
-                    gamma=self.config.focal_gamma,
-                    alpha=class_weights,
-                    reduction=self.config.focal_reduction,
+            if class_weights is not None:
+                logger.info(
+                    f"Building CrossEntropyLoss with class weights: {class_weights}"
                 )
             else:
+                logger.info("Building CrossEntropyLoss without class weights")
+            return nn.CrossEntropyLoss(weight=class_weights)
+
+        elif crit_name == "focal":
+            gamma = self.config.focal_gamma
+            alpha = self.config.focal_alpha
+            reduction = self.config.focal_reduction
+
+            logger.info(
+                f"Building FocalLoss with gamma={gamma}, reduction={self.config.focal_reduction}"
+            )
+
+            # Case 1: Use class_weights as alpha (recommended for imbalanced data)
+            if isinstance(alpha, str) and alpha == "class_weights":
+                if class_weights is not None:
+                    logger.info(
+                        f"Using computed class_weights as alpha: {class_weights}"
+                    )
+                    return FocalLoss(
+                        gamma=gamma,
+                        alpha=class_weights,
+                        reduction=reduction,
+                    )
+                else:
+                    logger.warning(
+                        "focal_alpha='class_weights' but no class_weights computed! Using no alpha."
+                    )
+                    return FocalLoss(
+                        gamma=gamma,
+                        alpha=None,
+                        reduction=reduction,
+                    )
+
+            # Case 2: Use custom alpha weights (no class_weights as weight)
+            elif alpha is not None:
                 alpha_param = (
-                    torch.tensor(self.config.focal_alpha, device=self.device)
-                    if isinstance(self.config.focal_alpha, (list, float))
+                    torch.tensor(alpha, device=self.device)
+                    if isinstance(alpha, (list, float))
                     else None
                 )
+                logger.info(f"Using custom alpha: {alpha}")
+                if class_weights is not None:
+                    logger.warning(
+                        f"Ignoring class_weights ({class_weights}) when custom alpha is set to avoid double-weighting"
+                    )
                 return FocalLoss(
-                    gamma=self.config.focal_gamma,
-                    weight=class_weights,
+                    gamma=gamma,
                     alpha=alpha_param,
-                    reduction=self.config.focal_reduction,
+                    reduction=reduction,
                 )
+
+            # Case 3: No alpha, but use class_weights as weight (CE-style weighting in focal loss)
+            else:
+                if class_weights is not None:
+                    logger.info(
+                        f"Using class_weights as weight parameter (CE-style): {class_weights}"
+                    )
+                    return FocalLoss(
+                        gamma=gamma,
+                        weight=class_weights,
+                        reduction=reduction,
+                    )
+                else:
+                    logger.info("No alpha or class_weights - using standard focal loss")
+                    return FocalLoss(
+                        gamma=gamma,
+                        reduction=reduction,
+                    )
+
         else:
             raise ValueError(f"Unknown criterion: {crit_name}")
 
@@ -152,11 +201,37 @@ class BaseTrainer:
         for c in range(num_classes):
             class_counts[c] = (all_labels == c).sum()
 
-        logger.info("Class distribution and weights:")
+        logger.debug("Class distribution and weights:")
         for c in range(num_classes):
-            logger.info(
+            logger.debug(
                 f"  Class {c}: {int(class_counts[c])} samples → weight {class_weights[c]:.4f}"
             )
+
+        # ---------------- DEBUG: confirm class index order ----------------
+        logger.debug("Class index order used for weights and focal alpha:")
+        try:
+            from nebula.data.dataset import get_label_mappings
+
+            _, idx2label = get_label_mappings()
+            logger.debug("Class order and weighting summary:")
+            for i, name in idx2label.items():
+                w_val = (
+                    float(class_weights[i])
+                    if class_weights is not None and len(class_weights) > i
+                    else None
+                )
+                alpha_val = None
+                if hasattr(self.config, "focal_alpha") and isinstance(
+                    self.config.focal_alpha, (list, tuple)
+                ):
+                    if len(self.config.focal_alpha) > i:
+                        alpha_val = float(self.config.focal_alpha[i])
+                logger.debug(
+                    f"  idx {i}: {name:<12} → weight={w_val}, alpha={alpha_val}"
+                )
+        except Exception as e:
+            logger.warning(f"Could not print class order/weights/alpha mapping: {e}")
+        logger.debug("------------------------------------------------------------")
 
         return class_weights
 
