@@ -467,7 +467,7 @@ class BaseTrainer:
                 except Exception:
                     pass
 
-            if self.early_stopping is not None:
+            if self.early_stopping is not None and not is_warmup:
                 metric = self.config.early_stopping_metric
                 # If using target-based metrics, require target_loader
                 if metric == "f1":

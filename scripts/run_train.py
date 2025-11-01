@@ -7,7 +7,8 @@ import yaml
 
 from nebula.commons import Logger, log_config, set_all_seeds
 from nebula.data.dataloaders import GalaxyDataModule
-from nebula.modeling.configs import (DAAdversarialConfig, DAFixedLambdaConfig,
+from nebula.modeling.configs import (BaseTrainerConfig, DAAdversarialConfig,
+                                     DAFixedLambdaConfig,
                                      DATrainableWeightsConfig,
                                      DATrainableWeightsSigmaConfig, NoDAConfig)
 from nebula.modeling.trainers import (DAAdversarialTrainer,
@@ -59,25 +60,42 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
     base_params = {
         "num_epochs": int(train_config.get("num_epochs", 10)),
         "lr": float(train_config.get("lr", 1e-4)),
-        "optimizer": str(train_config.get("optimizer", "adamw")),
-        "weight_decay": float(train_config.get("weight_decay", 1e-2)),
-        "max_norm": float(train_config.get("max_norm", 10.0)),
-        "criterion": str(train_config.get("criterion", "cross_entropy")),
-        "use_class_weights": bool(train_config.get("use_class_weights", False)),
-        "class_weight_method": str(
-            train_config.get("class_weight_method", "effective")
+        "optimizer": str(train_config.get("optimizer", BaseTrainerConfig.optimizer)),
+        "weight_decay": float(
+            train_config.get("weight_decay", BaseTrainerConfig.weight_decay)
         ),
-        "class_weight_beta": float(train_config.get("class_weight_beta", 0.9999)),
+        "max_norm": float(train_config.get("max_norm", BaseTrainerConfig.max_norm)),
+        "criterion": str(train_config.get("criterion", BaseTrainerConfig.criterion)),
+        "use_class_weights": bool(
+            train_config.get("use_class_weights", BaseTrainerConfig.use_class_weights)
+        ),
+        "class_weight_method": str(
+            train_config.get(
+                "class_weight_method", BaseTrainerConfig.class_weight_method
+            )
+        ),
+        "class_weight_beta": float(
+            train_config.get("class_weight_beta", BaseTrainerConfig.class_weight_beta)
+        ),
         "early_stopping_patience": (
             None
-            if train_config.get("early_stopping_patience", None) is None
+            if train_config.get(
+                "early_stopping_patience", BaseTrainerConfig.early_stopping_patience
+            )
+            is None
             else int(train_config.get("early_stopping_patience"))
         ),
-        "early_stopping_metric": str(train_config.get("early_stopping_metric", "f1")),
+        "early_stopping_metric": str(
+            train_config.get(
+                "early_stopping_metric", BaseTrainerConfig.early_stopping_metric
+            )
+        ),
     }
     if base_params["criterion"] == "focal":
-        base_params["focal_gamma"] = float(train_config.get("focal_gamma", 2.0))
-        fa_val = train_config.get("focal_alpha", None)
+        base_params["focal_gamma"] = float(
+            train_config.get("focal_gamma", BaseTrainerConfig.focal_gamma)
+        )
+        fa_val = train_config.get("focal_alpha", BaseTrainerConfig.focal_alpha)
         if fa_val is None:
             base_params["focal_alpha"] = None
         elif isinstance(fa_val, list):
@@ -88,7 +106,7 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
         else:
             base_params["focal_alpha"] = float(fa_val)
         base_params["focal_reduction"] = str(
-            train_config.get("focal_reduction", "mean")
+            train_config.get("focal_reduction", BaseTrainerConfig.focal_reduction)
         )
 
     method = train_config["method"]
@@ -109,12 +127,22 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
 
         adv_params = {
             **base_params,
-            "lambda_grl": float(train_config.get("lambda_grl", 0.25)),
+            "lambda_grl": float(
+                train_config.get("lambda_grl", DAAdversarialConfig.lambda_grl)
+            ),
             "latent_dim": latent_dim,
-            "domain_hidden_dim": int(train_config.get("domain_hidden_dim", 256)),
-            "use_projection": bool(train_config.get("use_projection", False)),
+            "domain_hidden_dim": int(
+                train_config.get(
+                    "domain_hidden_dim", DAAdversarialConfig.domain_hidden_dim
+                )
+            ),
+            "use_projection": bool(
+                train_config.get("use_projection", DAAdversarialConfig.use_projection)
+            ),
             "domain_projection_dim": int(
-                train_config.get("domain_projection_dim", 128)
+                train_config.get(
+                    "domain_projection_dim", DAAdversarialConfig.domain_projection_dim
+                )
             ),
         }
         trainer_config = DAAdversarialConfig(**adv_params)
@@ -122,10 +150,16 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
     elif method in ["sinkhorn", "mmd", "energy"]:
         da_params = {
             **base_params,
-            "lambda_da": float(train_config.get("lambda_da", 0.1)),
+            "lambda_da": float(
+                train_config.get("lambda_da", DAFixedLambdaConfig.lambda_da)
+            ),
             "method": method,
-            "sinkhorn_blur": float(train_config.get("sinkhorn_blur", 10.0)),
-            "sinkhorn_p": int(train_config.get("sinkhorn_p", 2)),
+            "sinkhorn_blur": float(
+                train_config.get("sinkhorn_blur", DAFixedLambdaConfig.sinkhorn_blur)
+            ),
+            "sinkhorn_p": int(
+                train_config.get("sinkhorn_p", DAFixedLambdaConfig.sinkhorn_p)
+            ),
         }
         use_trainable_weights = train_config.get("use_trainable_weights", False)
         use_sigma_schedule = train_config.get("use_sigma_schedule", False)
@@ -133,27 +167,67 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
         if use_trainable_weights and use_sigma_schedule:
             sigma_params = {
                 **da_params,
-                "eta_1_init": float(train_config.get("eta_1_init", 0.1)),
-                "eta_2_init": float(train_config.get("eta_2_init", 1.0)),
+                "eta_1_init": float(
+                    train_config.get(
+                        "eta_1_init", DATrainableWeightsSigmaConfig.eta_1_init
+                    )
+                ),
+                "eta_2_init": float(
+                    train_config.get(
+                        "eta_2_init", DATrainableWeightsSigmaConfig.eta_2_init
+                    )
+                ),
                 "sigma_schedule_type": train_config.get(
-                    "sigma_schedule_type", "exponential"
+                    "sigma_schedule_type",
+                    DATrainableWeightsSigmaConfig.sigma_schedule_type,
                 ),
                 "sigma_initial_blur": float(
-                    train_config.get("sigma_initial_blur", 10.0)
+                    train_config.get(
+                        "sigma_initial_blur",
+                        DATrainableWeightsSigmaConfig.sigma_initial_blur,
+                    )
                 ),
-                "sigma_decay_rate": float(train_config.get("sigma_decay_rate", 0.6)),
-                "sigma_final_blur": float(train_config.get("sigma_final_blur", 1.0)),
-                "sigma_step_size": int(train_config.get("sigma_step_size", 2)),
-                "sigma_step_gamma": float(train_config.get("sigma_step_gamma", 0.5)),
-                "sigma_poly_power": float(train_config.get("sigma_poly_power", 2.0)),
+                "sigma_decay_rate": float(
+                    train_config.get(
+                        "sigma_decay_rate",
+                        DATrainableWeightsSigmaConfig.sigma_decay_rate,
+                    )
+                ),
+                "sigma_final_blur": float(
+                    train_config.get(
+                        "sigma_final_blur",
+                        DATrainableWeightsSigmaConfig.sigma_final_blur,
+                    )
+                ),
+                "sigma_step_size": int(
+                    train_config.get(
+                        "sigma_step_size", DATrainableWeightsSigmaConfig.sigma_step_size
+                    )
+                ),
+                "sigma_step_gamma": float(
+                    train_config.get(
+                        "sigma_step_gamma",
+                        DATrainableWeightsSigmaConfig.sigma_step_gamma,
+                    )
+                ),
+                "sigma_poly_power": float(
+                    train_config.get(
+                        "sigma_poly_power",
+                        DATrainableWeightsSigmaConfig.sigma_poly_power,
+                    )
+                ),
             }
             trainer_config = DATrainableWeightsSigmaConfig(**sigma_params)
             trainer = DATrainableWeightsSigmaTrainer(model, trainer_config, device)
         elif use_trainable_weights:
             weights_params = {
                 **da_params,
-                "eta_1_init": float(train_config.get("eta_1_init", 0.1)),
-                "eta_2_init": float(train_config.get("eta_2_init", 1.0)),
+                "eta_1_init": float(
+                    train_config.get("eta_1_init", DATrainableWeightsConfig.eta_1_init)
+                ),
+                "eta_2_init": float(
+                    train_config.get("eta_2_init", DATrainableWeightsConfig.eta_2_init)
+                ),
             }
             trainer_config = DATrainableWeightsConfig(**weights_params)
             trainer = DATrainableWeightsTrainer(model, trainer_config, device)
@@ -167,31 +241,12 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
     return trainer, trainer_config
 
 
-def merge_logs(logger, path: Path, new: pd.DataFrame) -> pd.DataFrame:
-    if not path.exists():
-        return new
-    try:
-        old = pd.read_csv(path)
-        last = old["epoch"].max()
-        new = new[new["epoch"] > last]
-        if new.empty:
-            logger.warning("No new epochs to add.")
-            return old
-        merged = pd.concat([old, new], ignore_index=True)
-        logger.info(f"Merged: {len(old)} + {len(new)} = {len(merged)}")
-        return merged
-    except Exception as e:
-        logger.error(f"Could not merge logs: {e}.")
-        return new
-
-
 def main():
     p = argparse.ArgumentParser(
         epilog="See configs/config.template.yml for info about the config"
     )
     p.add_argument("--config", type=str, required=True)
     p.add_argument("--device", type=str, default=None)
-    p.add_argument("--resume", type=str, default=None)
     p.add_argument("--use_diagnostics", action="store_true")
     p.add_argument("--eval_interval", type=int, default=0)
     p.add_argument("--diag_max_batches", type=int, default=5)
@@ -207,12 +262,12 @@ def main():
         Path(config.get("output", {}).get("root_dir", "experiments"))
         / config["experiment_name"]
     )
-    ckpt_dir, logs_dir = output_root / "checkpoints", output_root / "logs"
+    ckpt_dir, logs_dir = output_root / "ckpts", output_root / "logs"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     set_all_seeds(config.get("seed", 42))
-    logger = Logger(output_root / "logs.log")
+    logger = Logger(output_root / "train_logs.log")
     device = torch.device(
         args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     )
@@ -226,10 +281,6 @@ def main():
     model = build_model(config["model"]["type"], config["data"]["image_size"])
     model.to(device)
     trainer, _ = build_config(model, config, device)
-
-    if args.resume:
-        trainer.load_checkpoint(args.resume)
-        logger.info(f"Resumed from epoch {len(trainer.history['train_loss'])}")
 
     use_target = config["training"]["method"] != "baseline"
     # use_target = True
@@ -283,21 +334,6 @@ def main():
         df = pd.merge(history_df, diag_history_df, on="epoch", how="left")
         diag_cols = [c for c in diag_history_df.columns if c != "epoch"]
         df[diag_cols] = df[diag_cols].fillna(0)
-    else:
-        df = history_df
-
-    if args.resume:
-        history_df = merge_logs(
-            logger, logs_dir / f"{config['experiment_name']}_history.csv", history_df
-        )
-        diag_history_df = merge_logs(
-            logger, logs_dir / f"{config['experiment_name']}_diag.csv", diag_history_df
-        )
-
-        df = pd.merge(history_df, diag_history_df, on="epoch", how="left")
-        diag_cols = [c for c in diag_history_df.columns if c != "epoch"]
-        df[diag_cols] = df[diag_cols].fillna(0)
-
         df.to_csv(logs_dir / f"{config['experiment_name']}.csv", index=False)
     logger.info(f"Logs saved: {logs_dir}")
 
