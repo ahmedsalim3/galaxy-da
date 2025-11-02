@@ -18,6 +18,7 @@ dependencies = [
     "umap>=0.1.1",
     "ipykernel>=7.0.0",
     "pot>=0.9.6.post1",
+    "escnn>=1.0.11",
 ]
 [build-system]
 requires = ["setuptools>=64", "setuptools_scm>=8"]

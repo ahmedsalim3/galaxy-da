@@ -31,6 +31,12 @@ data:
   source_labels: "data/source/source_galaxy_labels.csv"
 
   include_rotations: false # data augmentation for source domain
+  # NOTE:
+  #   - If model.type == escnn (equivariant): prefer include_rotations: false
+  #       The encoder is rotation/flip equivariant (C_N / D_N), so duplicating
+  #       rotated copies adds little and can bias orientation statistics.
+  #   - If model.type in {cnn, resnet}: you can consider include_rotations: true
+  #       Standard backbones may benefit from rotation aug under covariate shift.
   # NOTE: include_rotations=True will include 8 augmented images for each original image.
   # The augmented images are created by rotating the original image by 0, 90, 180, and 270 degrees 
   # and flipping the image horizontally. It will result in 25856 total images for the source domain.
@@ -99,9 +105,27 @@ data:
 
 
 # Model architecture
-# Currently only: 'cnn'
+# Supported: 'cnn' | 'resnet' | 'escnn'
 model:
-  type: "cnn"
+  # Select model type
+  type: "cnn"   # cnn | resnet | escnn
+
+  # --- ResNet options (only used when type: resnet) ---
+  # torchvision resnet family: resnet18 | resnet34 | resnet50 | ...
+  # type: resnet
+  # arch: "resnet18"
+  # pretrained: true          # use ImageNet weights
+  # trainable_layers: 2       # unfreeze: 1→layer4; 2→layer4+layer3
+  # dropout: 0.3              # MLP head dropout
+
+  # --- ESCNN options (only used when type: escnn) ---
+  # Symmetry group: C_N (rotations) or D_N (rotations+flips)
+  # NOTE: Its better to set include_rotations=False
+  # type: escnn
+  # group: "C8"               # "C4", "C8", "D4", "D8", ...
+  # N: 8                      # group order for rotations
+  # base_width: 16            # stage-1 width (stages use 1x/2x/4x)
+  # dropout: 0.3              # MLP head dropout
 
 
 training:

@@ -16,7 +16,8 @@ from nebula.modeling.trainers import (DAAdversarialTrainer,
                                       DATrainableWeightsSigmaTrainer,
                                       DATrainableWeightsTrainer, NoDATrainer)
 from nebula.modeling.utils import plot_diag_history, plot_training_history
-from nebula.models.cnn import CNN
+from nebula.models import (CNN, ESCNNConfig, ESCNNSteerable, ResNetBackbone,
+                           ResNetConfig)
 
 
 def build_data_module(config: dict) -> GalaxyDataModule:
@@ -42,11 +43,38 @@ def build_data_module(config: dict) -> GalaxyDataModule:
     return data_module
 
 
-def build_model(model_type, image_size) -> torch.nn.Module:
+def build_model(
+    model_type, image_size, model_config: dict | None = None
+) -> torch.nn.Module:
+    model_config = model_config or {}
     if model_type == "cnn":
         model = CNN(
             num_classes=3,
             input_size=(3, *image_size),
+        )
+    elif model_type == "resnet":
+        model = ResNetBackbone(
+            config=ResNetConfig(
+                num_classes=3,
+                arch=model_config.get("arch", ResNetConfig.arch),
+                pretrained=bool(
+                    model_config.get("pretrained", ResNetConfig.pretrained)
+                ),
+                trainable_layers=int(
+                    model_config.get("trainable_layers", ResNetConfig.trainable_layers)
+                ),
+                dropout=float(model_config.get("dropout", ResNetConfig.dropout)),
+            )
+        )
+    elif model_type == "escnn":
+        model = ESCNNSteerable(
+            config=ESCNNConfig(
+                num_classes=3,
+                group=str(model_config.get("group", ESCNNConfig.group)),
+                N=int(model_config.get("N", ESCNNConfig.N)),
+                dropout=float(model_config.get("dropout", ESCNNConfig.dropout)),
+                base_width=int(model_config.get("base_width", ESCNNConfig.base_width)),
+            )
         )
     else:
         raise ValueError(f"Unknown model type: {model_type}")
@@ -59,6 +87,9 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
     # Base parameters
     base_params = {
         "num_epochs": int(train_config.get("num_epochs", 10)),
+        "warmup_epochs": int(
+            train_config.get("warmup_epochs", BaseTrainerConfig.warmup_epochs)
+        ),
         "lr": float(train_config.get("lr", 1e-4)),
         "optimizer": str(train_config.get("optimizer", BaseTrainerConfig.optimizer)),
         "weight_decay": float(
@@ -278,7 +309,11 @@ def main():
     logger.info(f"=" * 70)
 
     data_module = build_data_module(config)
-    model = build_model(config["model"]["type"], config["data"]["image_size"])
+    model = build_model(
+        config["model"]["type"],
+        config["data"]["image_size"],
+        config.get("model", {}),
+    )
     model.to(device)
     trainer, _ = build_config(model, config, device)
 
