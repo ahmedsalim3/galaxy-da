@@ -436,14 +436,21 @@ class BaseTrainer:
         # Resume-aware epoch loop
         start_epoch = len(self.history.get("train_loss", []))
         for epoch in range(start_epoch, self.config.num_epochs):
-            metrics = self.train_epoch(source_loader, target_loader, epoch)
+
+            # --- Warmup Logic ---
+            is_warmup = epoch < self.config.warmup_epochs
+            # assign None as target_loader during warmup phase
+            _target_loader = None if is_warmup else target_loader
+
+            metrics = self.train_epoch(source_loader, _target_loader, epoch)
             for k, v in metrics.items():
                 self.history[k].append(v)
             logger.info(
                 "┌──────────────────────────────────────────────────────────────┐"
             )
+            log_prefix = " Warmup" if is_warmup else " Epoch"
             logger.info(
-                f" Epoch {epoch+1}: CE={metrics['ce_loss']:.4f}, DA={metrics['da_loss']:.4f}, "
+                f"{log_prefix} {epoch+1}: CE={metrics['ce_loss']:.4f}, DA={metrics['da_loss']:.4f}, "
                 f"SAcc={metrics['source_acc']:.2f}%, TAcc={metrics['target_acc']:.2f}%"
             )
             if hasattr(self, "trainable_weights"):
@@ -582,13 +589,32 @@ class BaseTrainer:
             )
 
         if self.best_model:
-            self.model.load_state_dict(self.best_model)
+            try:
+                current_state = self.model.state_dict()
+                best_state = self.best_model
+                filtered_best = {
+                    k: v
+                    for k, v in best_state.items()
+                    if k in current_state
+                    and getattr(current_state[k], "shape", None)
+                    == getattr(v, "shape", None)
+                }
+                current_state.update(filtered_best)
+                self.model.load_state_dict(current_state, strict=True)
+            except Exception as e:
+                logger.warning(f"Failed to load best_model state_dict strictly: {e}")
 
         df_hist = pd.DataFrame(self.history)
         df_diag = pd.DataFrame(self.diag_history)
 
         if not df_hist.empty:
             df_hist.insert(0, "epoch", range(1, len(df_hist) + 1))
+            if self.config.warmup_epochs > 0:
+                warmup_epoch_numbers = range(1, self.config.warmup_epochs + 1)
+                df_hist["epoch_warmup"] = df_hist["epoch"].isin(warmup_epoch_numbers)
+            else:
+                df_hist["epoch_warmup"] = False
+
         if not df_diag.empty:
             num_epochs = self.config.num_epochs
             if eval_interval > 0:
@@ -602,6 +628,11 @@ class BaseTrainer:
             else:
                 epochs = [num_epochs]
             df_diag.insert(0, "epoch", epochs)
+            if self.config.warmup_epochs > 0:
+                warmup_epoch_numbers = range(1, self.config.warmup_epochs + 1)
+                df_diag["epoch_warmup"] = df_diag["epoch"].isin(warmup_epoch_numbers)
+            else:
+                df_diag["epoch_warmup"] = False
             df_diag = df_diag.drop(columns=["confusion_matrix"])
 
         histories = {
