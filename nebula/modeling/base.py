@@ -14,8 +14,8 @@ from nebula.analysis.evaluate import (compute_epoch_metrics, eval_accuracy,
 from nebula.commons import Logger
 from nebula.data.class_weights import compute_class_weights
 from nebula.modeling.configs import BaseTrainerConfig
+from nebula.modeling.early_stoppings import EarlyStopping
 from nebula.modeling.focal_loss import FocalLoss
-from nebula.modeling.utils import EarlyStopping
 
 logger = Logger()
 

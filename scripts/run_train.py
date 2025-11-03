@@ -15,9 +15,9 @@ from nebula.modeling.trainers import (DAAdversarialTrainer,
                                       DAFixedLambdaTrainer,
                                       DATrainableWeightsSigmaTrainer,
                                       DATrainableWeightsTrainer, NoDATrainer)
-from nebula.modeling.utils import plot_diag_history, plot_training_history
 from nebula.models import (CNN, ESCNNConfig, ESCNNSteerable, ResNetBackbone,
                            ResNetConfig)
+from nebula.visualizations import plot_diag_history, plot_training_history
 
 
 def build_data_module(config: dict) -> GalaxyDataModule:
@@ -353,7 +353,9 @@ def main():
 
     # save history plots, and csv logs
     _ = plot_training_history(
-        history, save_path=logs_dir / f"{config['experiment_name']}_history.png"
+        history,
+        trainer=trainer,
+        save_path=logs_dir / f"{config['experiment_name']}_history.png",
     )
     history_df.to_csv(
         logs_dir / f"{config['experiment_name']}_history.csv", index=False
