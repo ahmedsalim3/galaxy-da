@@ -1,5 +1,9 @@
 import argparse
+import os
 from pathlib import Path
+
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import pandas as pd
 import torch
@@ -147,12 +151,16 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
     elif method == "adversarial":
         # calculate latent dimension from the model if not provided
         if train_config.get("latent_dim", None) is None:
+            was_training = model.training
+            model.eval()
             with torch.no_grad():
                 dummy_input = torch.randn(1, 3, *config["data"]["image_size"]).to(
                     device
                 )
                 _, dummy_latent = model(dummy_input)
-                latent_dim = dummy_latent.shape[1]
+            latent_dim = dummy_latent.shape[1]
+            if was_training:
+                model.train()
         else:
             latent_dim = int(train_config["latent_dim"])
 
@@ -362,7 +370,9 @@ def main():
     )
     if args.use_diagnostics:
         _ = plot_diag_history(
-            diag_history, save_path=logs_dir / f"{config['experiment_name']}_diag.png"
+            diag_history,
+            warmup_epochs=int(config.get("training", {}).get("warmup_epochs", 0) or 0),
+            save_path=logs_dir / f"{config['experiment_name']}_diag.png",
         )
         diag_history_df.to_csv(
             logs_dir / f"{config['experiment_name']}_diag.csv", index=False
