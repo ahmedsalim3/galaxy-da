@@ -34,7 +34,7 @@ source .venv/bin/activate # On mac/linux distros
 pip install -e .
 ```
 
-# How to train?
+## How to train?
 
 1. Create a config file, see [template](./configs/config.template.yml) and run with 
 
@@ -42,23 +42,18 @@ pip install -e .
 python3 scripts/run_train.py --config /path/to/config.yml
 ```
 
+## How to evaluate?
+
 ```sh
-# Full script (Under Dev)
-usage: run_train.py [-h] --config CONFIG [--device DEVICE] [--resume RESUME] [--use_diagnostics] [--eval_interval EVAL_INTERVAL]
-                    [--diag_max_batches DIAG_MAX_BATCHES]
-
-options:
-  -h, --help            show this help message and exit
-  --config CONFIG
-  --device DEVICE
-  --resume RESUME
-  --use_diagnostics
-  --eval_interval EVAL_INTERVAL
-  --diag_max_batches DIAG_MAX_BATCHES
-
-See configs/config.template.yml for info about the config
+python3 scripts/run_eval.py /path/to/ckpt
 ```
+You can also run train and evaluate simultaneously. Run this with a single config, multiple configs, or a folder of configs by passing `-f`:
 
+```sh
+./run_experiment.sh <config_path> [more_configs...]
+# or for a folder of configs:
+./run_experiment.sh -f <config_folder>
+```
 ## About This Project
 
 This project was made possible through the [2025 IAIFI Summer School](https://github.com/iaifi/summer-school-2025) provided by The [NSF AI](https://iaifi.org/) Institute for Artificial Intelligence and Fundamental Interactions (IAIFI).
