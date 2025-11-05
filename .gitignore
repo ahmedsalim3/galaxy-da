@@ -168,3 +168,4 @@ data/*/*/*.png
 data/*/*/*.jpg
 data/*/*/*.jpeg
 *.pt
+*.npy

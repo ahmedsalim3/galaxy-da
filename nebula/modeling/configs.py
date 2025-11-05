@@ -7,6 +7,7 @@ from typing import List, Optional, Union
 @dataclass
 class BaseTrainerConfig:
     num_epochs: int = 6
+    warmup_epochs: int = 0
     lr: float = 1e-4
     optimizer: str = "adamw"
     weight_decay: float = 1e-2

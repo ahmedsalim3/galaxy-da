@@ -15,9 +15,10 @@ dependencies = [
     "torch==2.8.0",
     "torchvision==0.23.0",
     "tqdm==4.67.1",
-    "umap>=0.1.1",
+    "umap-learn>=0.5.7",
     "ipykernel>=7.0.0",
     "pot>=0.9.6.post1",
+    "escnn>=1.0.11",
 ]
 [build-system]
 requires = ["setuptools>=64", "setuptools_scm>=8"]
