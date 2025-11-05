@@ -20,9 +20,12 @@ def plot_training_history(
     """
     Legacy interface - calls plot_training_summary
     """
-    warmup_epochs = (
-        sum(history.get("epoch_warmup", [])) if "epoch_warmup" in history else 0
-    )
+    if "epoch_warmup" in history:
+        warmup_epochs = int(sum(history.get("epoch_warmup", [])))
+    else:
+        warmup_epochs = int(
+            getattr(getattr(trainer, "config", object()), "warmup_epochs", 0) or 0
+        )
     logger.info(f"Warmup epochs: {warmup_epochs}")
     return plot_training_summary(history, warmup_epochs, trainer, save_path)
 
