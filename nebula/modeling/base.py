@@ -14,8 +14,8 @@ from nebula.analysis.evaluate import (compute_epoch_metrics, eval_accuracy,
 from nebula.commons import Logger
 from nebula.data.class_weights import compute_class_weights
 from nebula.modeling.configs import BaseTrainerConfig
+from nebula.modeling.early_stoppings import EarlyStopping
 from nebula.modeling.focal_loss import FocalLoss
-from nebula.modeling.utils import EarlyStopping
 
 logger = Logger()
 
@@ -98,32 +98,81 @@ class BaseTrainer:
 
     def _build_criterion(self, class_weights=None) -> nn.Module:
         crit_name = self.config.criterion
-        if class_weights is not None:
-            logger.info(f"Adding class weights to {crit_name} loss function")
         if crit_name == "cross_entropy":
-            return nn.CrossEntropyLoss(weight=class_weights)
-        elif crit_name == "focal":
-            if (
-                isinstance(self.config.focal_alpha, str)
-                and self.config.focal_alpha == "class_weights"
-            ):
-                return FocalLoss(
-                    gamma=self.config.focal_gamma,
-                    alpha=class_weights,
-                    reduction=self.config.focal_reduction,
+            if class_weights is not None:
+                logger.info(
+                    f"Building CrossEntropyLoss with class weights: {class_weights}"
                 )
             else:
+                logger.info("Building CrossEntropyLoss without class weights")
+            return nn.CrossEntropyLoss(weight=class_weights)
+
+        elif crit_name == "focal":
+            gamma = self.config.focal_gamma
+            alpha = self.config.focal_alpha
+            reduction = self.config.focal_reduction
+
+            logger.info(
+                f"Building FocalLoss with gamma={gamma}, reduction={self.config.focal_reduction}"
+            )
+
+            # Case 1: Use class_weights as alpha (recommended for imbalanced data)
+            if isinstance(alpha, str) and alpha == "class_weights":
+                if class_weights is not None:
+                    logger.info(
+                        f"Using computed class_weights as alpha: {class_weights}"
+                    )
+                    return FocalLoss(
+                        gamma=gamma,
+                        alpha=class_weights,
+                        reduction=reduction,
+                    )
+                else:
+                    logger.warning(
+                        "focal_alpha='class_weights' but no class_weights computed! Using no alpha."
+                    )
+                    return FocalLoss(
+                        gamma=gamma,
+                        alpha=None,
+                        reduction=reduction,
+                    )
+
+            # Case 2: Use custom alpha weights (no class_weights as weight)
+            elif alpha is not None:
                 alpha_param = (
-                    torch.tensor(self.config.focal_alpha, device=self.device)
-                    if isinstance(self.config.focal_alpha, (list, float))
+                    torch.tensor(alpha, device=self.device)
+                    if isinstance(alpha, (list, float))
                     else None
                 )
+                logger.info(f"Using custom alpha: {alpha}")
+                if class_weights is not None:
+                    logger.warning(
+                        f"Ignoring class_weights ({class_weights}) when custom alpha is set to avoid double-weighting"
+                    )
                 return FocalLoss(
-                    gamma=self.config.focal_gamma,
-                    weight=class_weights,
+                    gamma=gamma,
                     alpha=alpha_param,
-                    reduction=self.config.focal_reduction,
+                    reduction=reduction,
                 )
+
+            # Case 3: No alpha, but use class_weights as weight (CE-style weighting in focal loss)
+            else:
+                if class_weights is not None:
+                    logger.info(
+                        f"Using class_weights as weight parameter (CE-style): {class_weights}"
+                    )
+                    return FocalLoss(
+                        gamma=gamma,
+                        weight=class_weights,
+                        reduction=reduction,
+                    )
+                else:
+                    logger.info("No alpha or class_weights - using standard focal loss")
+                    return FocalLoss(
+                        gamma=gamma,
+                        reduction=reduction,
+                    )
+
         else:
             raise ValueError(f"Unknown criterion: {crit_name}")
 
@@ -152,11 +201,37 @@ class BaseTrainer:
         for c in range(num_classes):
             class_counts[c] = (all_labels == c).sum()
 
-        logger.info("Class distribution and weights:")
+        logger.debug("Class distribution and weights:")
         for c in range(num_classes):
-            logger.info(
+            logger.debug(
                 f"  Class {c}: {int(class_counts[c])} samples → weight {class_weights[c]:.4f}"
             )
+
+        # ---------------- DEBUG: confirm class index order ----------------
+        logger.debug("Class index order used for weights and focal alpha:")
+        try:
+            from nebula.data.dataset import get_label_mappings
+
+            _, idx2label = get_label_mappings()
+            logger.debug("Class order and weighting summary:")
+            for i, name in idx2label.items():
+                w_val = (
+                    float(class_weights[i])
+                    if class_weights is not None and len(class_weights) > i
+                    else None
+                )
+                alpha_val = None
+                if hasattr(self.config, "focal_alpha") and isinstance(
+                    self.config.focal_alpha, (list, tuple)
+                ):
+                    if len(self.config.focal_alpha) > i:
+                        alpha_val = float(self.config.focal_alpha[i])
+                logger.debug(
+                    f"  idx {i}: {name:<12} → weight={w_val}, alpha={alpha_val}"
+                )
+        except Exception as e:
+            logger.warning(f"Could not print class order/weights/alpha mapping: {e}")
+        logger.debug("------------------------------------------------------------")
 
         return class_weights
 
@@ -361,17 +436,24 @@ class BaseTrainer:
         # Resume-aware epoch loop
         start_epoch = len(self.history.get("train_loss", []))
         for epoch in range(start_epoch, self.config.num_epochs):
-            metrics = self.train_epoch(source_loader, target_loader, epoch)
+
+            # --- Warmup Logic ---
+            is_warmup = epoch < self.config.warmup_epochs
+            # assign None as target_loader during warmup phase
+            _target_loader = None if is_warmup else target_loader
+
+            metrics = self.train_epoch(source_loader, _target_loader, epoch)
             for k, v in metrics.items():
                 self.history[k].append(v)
             logger.info(
                 "┌──────────────────────────────────────────────────────────────┐"
             )
+            log_prefix = " Warmup" if is_warmup else " Epoch"
             logger.info(
-                f" Epoch {epoch+1}: CE={metrics['ce_loss']:.4f}, DA={metrics['da_loss']:.4f}, "
+                f"{log_prefix} {epoch+1}: CE={metrics['ce_loss']:.4f}, DA={metrics['da_loss']:.4f}, "
                 f"SAcc={metrics['source_acc']:.2f}%, TAcc={metrics['target_acc']:.2f}%"
             )
-            if hasattr(self, "trainable_weights"):
+            if hasattr(self, "trainable_weights") and not is_warmup:
                 try:
                     eta_1_val = float(self.trainable_weights.eta_1.item())
                     eta_2_val = float(self.trainable_weights.eta_2.item())
@@ -386,13 +468,13 @@ class BaseTrainer:
             else:
                 self.history["eta_1"].append(None)
                 self.history["eta_2"].append(None)
-            if hasattr(self, "current_blur"):
+            if hasattr(self, "current_blur") and not is_warmup:
                 try:
                     logger.info(f"           sigma={float(self.current_blur):.4f}")
                 except Exception:
                     pass
 
-            if self.early_stopping is not None:
+            if self.early_stopping is not None and not is_warmup:
                 metric = self.config.early_stopping_metric
                 # If using target-based metrics, require target_loader
                 if metric == "f1":
@@ -507,13 +589,32 @@ class BaseTrainer:
             )
 
         if self.best_model:
-            self.model.load_state_dict(self.best_model)
+            try:
+                current_state = self.model.state_dict()
+                best_state = self.best_model
+                filtered_best = {
+                    k: v
+                    for k, v in best_state.items()
+                    if k in current_state
+                    and getattr(current_state[k], "shape", None)
+                    == getattr(v, "shape", None)
+                }
+                current_state.update(filtered_best)
+                self.model.load_state_dict(current_state, strict=True)
+            except Exception as e:
+                logger.warning(f"Failed to load best_model state_dict strictly: {e}")
 
         df_hist = pd.DataFrame(self.history)
         df_diag = pd.DataFrame(self.diag_history)
 
         if not df_hist.empty:
             df_hist.insert(0, "epoch", range(1, len(df_hist) + 1))
+            if self.config.warmup_epochs > 0:
+                warmup_epoch_numbers = range(1, self.config.warmup_epochs + 1)
+                df_hist["epoch_warmup"] = df_hist["epoch"].isin(warmup_epoch_numbers)
+            else:
+                df_hist["epoch_warmup"] = False
+
         if not df_diag.empty:
             num_epochs = self.config.num_epochs
             if eval_interval > 0:
@@ -527,6 +628,11 @@ class BaseTrainer:
             else:
                 epochs = [num_epochs]
             df_diag.insert(0, "epoch", epochs)
+            if self.config.warmup_epochs > 0:
+                warmup_epoch_numbers = range(1, self.config.warmup_epochs + 1)
+                df_diag["epoch_warmup"] = df_diag["epoch"].isin(warmup_epoch_numbers)
+            else:
+                df_diag["epoch_warmup"] = False
             df_diag = df_diag.drop(columns=["confusion_matrix"])
 
         histories = {
