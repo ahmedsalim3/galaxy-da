@@ -453,7 +453,7 @@ class BaseTrainer:
                 f"{log_prefix} {epoch+1}: CE={metrics['ce_loss']:.4f}, DA={metrics['da_loss']:.4f}, "
                 f"SAcc={metrics['source_acc']:.2f}%, TAcc={metrics['target_acc']:.2f}%"
             )
-            if hasattr(self, "trainable_weights"):
+            if hasattr(self, "trainable_weights") and not is_warmup:
                 try:
                     eta_1_val = float(self.trainable_weights.eta_1.item())
                     eta_2_val = float(self.trainable_weights.eta_2.item())
@@ -468,7 +468,7 @@ class BaseTrainer:
             else:
                 self.history["eta_1"].append(None)
                 self.history["eta_2"].append(None)
-            if hasattr(self, "current_blur"):
+            if hasattr(self, "current_blur") and not is_warmup:
                 try:
                     logger.info(f"           sigma={float(self.current_blur):.4f}")
                 except Exception:

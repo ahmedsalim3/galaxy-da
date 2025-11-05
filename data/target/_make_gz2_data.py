@@ -112,6 +112,57 @@ def classify_gz2(row):
     return None, m
 
 
+def compute_mass_and_starformation(df):
+    """
+    Compute the stellar mass, star formation flag, and AGN presence
+    for galaxies crossmatched with the Schawinski et al. (2010) AGN catalogue.
+
+    How these values are derived:
+    ---------------------------------
+    • Stellar mass (mass):
+        - Taken from the column LOG_MSTELLAR in the AGN catalogue (log10 of stellar mass in solar masses)
+        - Converted to linear scale using: mass = 10 ** LOG_MSTELLAR
+        - If LOG_MSTELLAR is missing, the mass is set to -1.0
+
+    • Star formation flag (star_forming):
+        - Based on the BPT_CLASS column (from the Baldwin–Phillips–Terlevich diagram classification)
+        - star_forming = 1 if BPT_CLASS == 1 (pure star-forming galaxy)
+        - star_forming = 0 otherwise
+
+    • AGN presence flag (has_agn):
+        - has_agn = 1 if BPT_CLASS is 3 (Seyfert) or 4 (LINER)
+        - has_agn = 0 otherwise
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame containing BPT_CLASS and LOG_MSTELLAR columns.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with added columns: 'mass', 'star_forming', and 'has_agn'
+    """
+    df = df.copy()
+
+    # --- Stellar mass calculation ---
+    df["mass"] = df["LOG_MSTELLAR"].apply(
+        lambda x: float(np.power(10, x)) if pd.notna(x) else -1.0
+    )
+
+    # --- Star formation classification ---
+    df["star_forming"] = df["BPT_CLASS"].apply(
+        lambda x: 1 if pd.notna(x) and x == 1 else 0
+    )
+
+    # --- AGN classification ---
+    df["has_agn"] = df["BPT_CLASS"].apply(
+        lambda x: 1 if pd.notna(x) and x in [3, 4] else 0
+    )
+
+    return df
+
+
 def find_image_path(asset_id):
     """
     find the image path for a given asset_id
