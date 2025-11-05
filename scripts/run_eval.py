@@ -112,7 +112,7 @@ def compute_domain_metrics(
     metrics["domain_auc"], metrics["domain_acc"] = domain_probe_auc(src_z, tgt_z)
     metrics["a_distance"] = 2.0 * (1.0 - metrics["domain_acc"])
     # metrics["mmd2"] = mmd2_unbiased_gaussian(src_z, tgt_z)
-    metrics["sinkhorn_div"] = sinkhorn_divergence(src_z, tgt_z, blur=0.05, p=2)
+    # metrics["sinkhorn_div"] = sinkhorn_divergence(src_z, tgt_z, blur=0.05, p=2)
 
     # Per-class MMD
     # cmmd = {}
@@ -457,7 +457,7 @@ def main():
     # logger.info(f"Avg Centroid Dist: {domain_metrics['full']['avg_centroid_distance']:.4f}")
     logger.info("--- Domain Alignment (Test Set) ---")
     # logger.info(f"MMD²: {domain_metrics['test']['mmd2']:.4f}")
-    logger.info(f"Sinkhorn Divergence: {domain_metrics['test']['sinkhorn_div']:.4f}")
+    # logger.info(f"Sinkhorn Divergence: {domain_metrics['test']['sinkhorn_div']:.4f}")
     logger.info(f"Domain AUC: {domain_metrics['test']['domain_auc']:.4f}")
     logger.info(f"A-Distance: {domain_metrics['test']['a_distance']:.4f}")
     logger.info(f"Silhouette Score: {domain_metrics['test']['silhouette_score']:.4f}")
