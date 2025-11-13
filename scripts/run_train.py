@@ -1,5 +1,6 @@
 import argparse
 import os
+from dataclasses import asdict
 from pathlib import Path
 
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -34,6 +35,10 @@ def build_data_module(config: dict) -> GalaxyDataModule:
         target_labels=data_config.get("target_labels", None),
         include_rotations=data_config.get("include_rotations", False),
         shared_norm=data_config.get("shared_norm", False),
+        use_sampler=data_config.get("use_sampler", False),
+        sampler_smoothing=data_config.get("sampler_smoothing", 0.0),
+        sampler_power=data_config.get("sampler_power", 1.0),
+        sampler_replacement=data_config.get("sampler_replacement", True),
         source_mean=data_config.get("source_mean"),
         source_std=data_config.get("source_std"),
         target_mean=data_config.get("target_mean"),
@@ -100,6 +105,10 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
             train_config.get("weight_decay", BaseTrainerConfig.weight_decay)
         ),
         "max_norm": float(train_config.get("max_norm", BaseTrainerConfig.max_norm)),
+        "lr_scheduler": train_config.get(
+            "lr_scheduler", BaseTrainerConfig.lr_scheduler
+        ),
+        "min_lr": float(train_config.get("min_lr", BaseTrainerConfig.min_lr)),
         "criterion": str(train_config.get("criterion", BaseTrainerConfig.criterion)),
         "use_class_weights": bool(
             train_config.get("use_class_weights", BaseTrainerConfig.use_class_weights)
@@ -169,6 +178,15 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
             "lambda_grl": float(
                 train_config.get("lambda_grl", DAAdversarialConfig.lambda_grl)
             ),
+            "lambda_grl_schedule": train_config.get(
+                "lambda_grl_schedule", DAAdversarialConfig.lambda_grl_schedule
+            ),
+            "lambda_entropy": float(
+                train_config.get("lambda_entropy", DAAdversarialConfig.lambda_entropy)
+            ),
+            "lambda_ot": float(
+                train_config.get("lambda_ot", DAAdversarialConfig.lambda_ot)
+            ),
             "latent_dim": latent_dim,
             "domain_hidden_dim": int(
                 train_config.get(
@@ -199,7 +217,17 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
             "sinkhorn_p": int(
                 train_config.get("sinkhorn_p", DAFixedLambdaConfig.sinkhorn_p)
             ),
+            # OT-based alignment loss (can be combined with geomloss DA loss)
+            "lambda_ot": float(
+                train_config.get("lambda_ot", DAFixedLambdaConfig.lambda_ot)
+            ),
+            # Entropy minimization on target predictions
+            "lambda_entropy": float(
+                train_config.get("lambda_entropy", DAFixedLambdaConfig.lambda_entropy)
+            ),
         }
+        # Note: OT loss hyperparameters (ot_lambda_ot, ot_lambda_match, etc.) are read
+        # directly from train_config in the trainer's __init__ method using getattr
         use_trainable_weights = train_config.get("use_trainable_weights", False)
         use_sigma_schedule = train_config.get("use_sigma_schedule", False)
 
@@ -294,7 +322,7 @@ def main():
     with open(args.config, "r") as f:
         config = yaml.safe_load(f)
     path = Path(args.config)
-    config["config_file_path"] = str(path.resolve())
+    config["config_file_path"] = str(path)
     config.setdefault("experiment_name", path.stem)
 
     output_root = (
@@ -323,7 +351,7 @@ def main():
         config.get("model", {}),
     )
     model.to(device)
-    trainer, _ = build_config(model, config, device)
+    trainer, trainer_config = build_config(model, config, device)
 
     use_target = config["training"]["method"] != "baseline"
     # use_target = True
@@ -384,10 +412,28 @@ def main():
         df.to_csv(logs_dir / f"{config['experiment_name']}.csv", index=False)
     logger.info(f"Logs saved: {logs_dir}")
 
+    data_dict = asdict(data_module)
+    serializable_data = {}
+    for k, v in data_dict.items():
+        if isinstance(v, (int, float, str, bool, list, type(None))):
+            serializable_data[k] = v
+        elif isinstance(v, torch.Tensor):
+            serializable_data[k] = v.tolist()
+        elif isinstance(v, tuple):
+            serializable_data[k] = list(v)
+        elif isinstance(v, Path):
+            serializable_data[k] = str(v)
+    config["data"] = serializable_data
+    config.setdefault("training", {}).update(asdict(trainer_config))
+
     ckpt_path = ckpt_dir / f"{config['experiment_name']}.pt"
     trainer.save_checkpoint(str(ckpt_path), full_config=config)
+    # save config
+    with open(ckpt_path.with_suffix(".yml"), "w") as f:
+        yaml.dump(config, f)
 
-    logger.info
+    logger.info(f"Checkpoint saved: {ckpt_path}")
+    logger.info(f"Config saved: {ckpt_path.with_suffix('.yml')}")
 
 
 if __name__ == "__main__":

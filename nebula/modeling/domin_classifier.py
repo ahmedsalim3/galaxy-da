@@ -76,7 +76,11 @@ class DomainClassifier(nn.Module):
         self.use_projection = use_projection
 
         if use_projection:
-            self.project = nn.Linear(latent_dim, projection_dim)
+            self.project = nn.Sequential(
+                nn.Linear(latent_dim, projection_dim),
+                nn.ReLU(inplace=True),
+                nn.Dropout(0.1),
+            )
             input_dim = projection_dim
         else:
             input_dim = latent_dim
@@ -84,7 +88,11 @@ class DomainClassifier(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, 1),  # Binary classification
+            nn.Dropout(0.2),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim // 2, 1),  # Binary classification
         )
 
     def forward(self, z: torch.Tensor, lambda_grl: float = 1.0) -> torch.Tensor:

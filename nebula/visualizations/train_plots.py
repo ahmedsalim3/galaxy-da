@@ -49,13 +49,18 @@ def plot_training_summary(
     """
     epochs = list(range(1, len(history["train_loss"]) + 1))
     fig, (ax_loss, ax_acc) = plt.subplots(
-        1, 2, figsize=(20, 6), gridspec_kw={"wspace": 0.25}
+        1,
+        2,
+        figsize=(20, 6),
+        gridspec_kw={"wspace": 0.30, "right": 0.85, "bottom": 0.20},
     )
 
     # ========== Loss Subplot ==========
     total_loss = prepare_data(history, "train_loss", epochs)
     ce_loss = prepare_data(history, "ce_loss", epochs)
     da_loss = prepare_data(history, "da_loss", epochs)
+    align_loss = prepare_data(history, "align_loss", epochs)
+    entropy_loss = prepare_data(history, "entropy_loss", epochs)
     eta1 = prepare_data(history, "eta_1", epochs)
     eta2 = prepare_data(history, "eta_2", epochs)
     sigma = prepare_data(history, "sigma", epochs)
@@ -101,6 +106,36 @@ def plot_training_summary(
             markersize=4,
             markevery=max(1, len(epochs) // 15),
         )
+    if (
+        align_loss.size > 0
+        and not np.all(np.isnan(align_loss))
+        and not np.all(align_loss == 0)
+    ):
+        ax_loss.plot(
+            epochs,
+            align_loss,
+            label="Alignment",
+            color=COLORS["align_loss"],
+            linewidth=2.0,
+            marker="d",
+            markersize=4,
+            markevery=max(1, len(epochs) // 15),
+        )
+    if (
+        entropy_loss.size > 0
+        and not np.all(np.isnan(entropy_loss))
+        and not np.all(entropy_loss == 0)
+    ):
+        ax_loss.plot(
+            epochs,
+            entropy_loss,
+            label="Entropy",
+            color=COLORS["entropy_loss"],
+            linewidth=2.0,
+            marker="v",
+            markersize=4,
+            markevery=max(1, len(epochs) // 15),
+        )
 
     ax_loss.set_xlabel("Epoch", fontweight="bold")
     ax_loss.set_ylabel("Loss", fontweight="bold")
@@ -112,7 +147,7 @@ def plot_training_summary(
     if has_eta or has_sigma:
         ax_twin = ax_loss.twinx()
         ax_twin.spines["right"].set_visible(True)
-        ax_twin.spines["right"].set_edgecolor(COLORS["total_loss"])
+        ax_twin.spines["right"].set_edgecolor("#AAAAAA")
         ax_twin.spines["right"].set_linewidth(1.2)
 
         if has_eta:
@@ -150,8 +185,7 @@ def plot_training_summary(
         ax_twin.set_ylabel(r"$\eta$ / $\sigma$ Value", fontweight="bold")
         ax_twin.grid(False)
 
-    add_legend(ax_loss, ax_twin, loc="upper right")
-    add_equation_box(ax_loss, get_loss_eq(trainer), position="top_left")
+    add_legend(ax_loss, ax_twin, loc="upper left", transparent=True)
 
     # ========== Accuracy Subplot ==========
     source_acc = prepare_data(history, "source_acc", epochs)
@@ -191,7 +225,7 @@ def plot_training_summary(
     ax_acc.set_title("Classification Accuracy", pad=15)
     ax_acc.set_ylim([0, 105])
 
-    add_legend(ax_acc, loc="lower right")
+    add_legend(ax_acc, loc="upper left")
 
     # ========== Save Figures ==========
     plt.tight_layout()
@@ -241,6 +275,8 @@ def plot_loss_components(
     total_loss = prepare_data(history, "train_loss", epochs)
     ce_loss = prepare_data(history, "ce_loss", epochs)
     da_loss = prepare_data(history, "da_loss", epochs)
+    align_loss = prepare_data(history, "align_loss", epochs)
+    entropy_loss = prepare_data(history, "entropy_loss", epochs)
     eta1 = prepare_data(history, "eta_1", epochs)
     eta2 = prepare_data(history, "eta_2", epochs)
     sigma = prepare_data(history, "sigma", epochs)
@@ -250,8 +286,8 @@ def plot_loss_components(
     )
     has_sigma = sigma.size > 0 and not np.all(np.isnan(sigma))
 
-    # Create figure
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(11, 6))
+    fig.subplots_adjust(top=0.88, bottom=0.22, left=0.12, right=0.95)
 
     add_warmup_region(ax, warmup_epochs, epochs)
 
@@ -289,6 +325,36 @@ def plot_loss_components(
             markersize=4,
             markevery=max(1, len(epochs) // 15),
         )
+    if (
+        align_loss.size > 0
+        and not np.all(np.isnan(align_loss))
+        and not np.all(align_loss == 0)
+    ):
+        ax.plot(
+            epochs,
+            align_loss,
+            label="Alignment Loss",
+            color=COLORS["align_loss"],
+            linewidth=2.0,
+            marker="d",
+            markersize=4,
+            markevery=max(1, len(epochs) // 15),
+        )
+    if (
+        entropy_loss.size > 0
+        and not np.all(np.isnan(entropy_loss))
+        and not np.all(entropy_loss == 0)
+    ):
+        ax.plot(
+            epochs,
+            entropy_loss,
+            label="Entropy Loss",
+            color=COLORS["entropy_loss"],
+            linewidth=2.0,
+            marker="v",
+            markersize=4,
+            markevery=max(1, len(epochs) // 15),
+        )
 
     ax.set_xlabel("Epoch", fontweight="bold")
     ax.set_ylabel("Loss", fontweight="bold")
@@ -300,7 +366,7 @@ def plot_loss_components(
     if has_eta or has_sigma:
         ax_twin = ax.twinx()
         ax_twin.spines["right"].set_visible(True)
-        ax_twin.spines["right"].set_edgecolor(COLORS["total_loss"])
+        ax_twin.spines["right"].set_edgecolor("#AAAAAA")
         ax_twin.spines["right"].set_linewidth(1.2)
 
         if has_eta:
@@ -343,8 +409,11 @@ def plot_loss_components(
 
         ax_twin.grid(False)
 
-    add_legend(ax, ax_twin, loc="upper right")
-    add_equation_box(ax, get_loss_eq(trainer), position="top_left")
+    add_legend(ax, ax_twin, loc="upper left", transparent=True)
+
+    equation = get_loss_eq(trainer)
+    if equation:
+        add_equation_box(ax, equation, position="bottom_center")
 
     plt.tight_layout()
 
@@ -380,7 +449,7 @@ def plot_accuracy_curves(
         logger.warning("No training history to plot (accuracy)")
         return plt.figure()
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
     # Prepare data
     source_acc = prepare_data(history, "source_acc", epochs)

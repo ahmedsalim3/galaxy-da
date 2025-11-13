@@ -70,12 +70,8 @@ def build_all_dataloaders(config):
         except (AttributeError, FileNotFoundError):
             # Force getting target data if not present
             logger.warning("Baseline config: manually loading target data for eval.")
-            config["data"]["target_img_dir"] = config["data"].get(
-                "target_img_dir", "data/target/gz2_images"
-            )
-            config["data"]["target_labels"] = config["data"].get(
-                "target_labels", "data/target/gz2_galaxy_labels.csv"
-            )
+            config["data"]["target_img_dir"] = "data/target/gz2_images"
+            config["data"]["target_labels"] = "data/target/gz2_galaxy_labels.csv"
             data_module = rt.build_data_module(config)
             target_dataset = data_module.tgt_dataset
 

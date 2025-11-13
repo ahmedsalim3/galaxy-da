@@ -103,6 +103,21 @@ data:
   # 0 = load in main process, >0 = parallel loading
   num_workers: 4
 
+  # Use WeightedRandomSampler for source training data
+  # WARNING: DO NOT use sampler with use_class_weights=True (double weighting!)
+  # WeightedRandomSampler oversamples underrepresented classes
+  # Recommended: use_sampler=false + use_class_weights=true (focal loss handles it)
+  use_sampler: false
+  
+  # Sampler parameters (only used if use_sampler=true)
+  # Compute weights based on smoothing and power settings:
+  #   - smoothing=0, power=1.0: standard inverse frequency (1.0 / count)
+  #   - smoothing=0, power!=1.0: power scaling (1.0 / count ** power)
+  #   - smoothing>0: smoothed weights (1.0 / (count + smoothing) ** power)
+  sampler_smoothing: 0.0
+  sampler_power: 1.0
+  sampler_replacement: true
+
 
 # Model architecture
 # Supported: 'cnn' | 'resnet' | 'escnn'
@@ -138,9 +153,20 @@ training:
   optimizer: "adamw"        # 'adam', 'adamw', 'sgd'
   weight_decay: 1e-2        # Weight decay for regularization
   max_norm: 10.0            # Gradient clipping threshold, used in the backward pass to prevent exploding gradients (0 = no clipping)
+  
+  # Learning rate scheduling
+  lr_scheduler: null        # Options: null | "cosine" | "step" | "exponential"
+  # null: no scheduling (constant lr)
+  # "cosine": cosine annealing from lr to min_lr over num_epochs
+  # "step": reduce lr by 0.1 every num_epochs//3 epochs
+  # "exponential": lr *= 0.95 every epoch
+  min_lr: 1e-6              # Minimum learning rate for cosine annealing (only used if lr_scheduler="cosine")
+  
   criterion: "cross_entropy"  # Loss function: 'cross_entropy', 'focal'
 
   # Class weighting
+  # WARNING: DO NOT use use_class_weights=True with use_sampler=True (double weighting!)
+  # Recommended: use_class_weights=true + use_sampler=false
   use_class_weights: false          # True to apply class weights, weights will be computed based on the class distribution in the source domain and applied to the loss function (criterion)
   class_weight_method: "effective"  # 'effective' or 'balanced' (only if use_class_weights=True)
   class_weight_beta: 0.9999         # Only used with 'effective' method (only if class_weight_method="effective")
@@ -203,28 +229,86 @@ training:
   # Choose the domain adaptation method to use, the rest of the parameters are specific to the method
   method: "baseline"  # Options: 'baseline', 'adversarial', 'sinkhorn', 'mmd', 'energy'
 
-  # Adversarial DA parameters (ONLY used if method='adversarial')
-  lambda_grl: 0.25                   # Gradient reversal scaling
-  # latent_dim: null                   # Dimension of latent space from feature extractor, automatically calculated from the model if not provided
+  # ========================================
+  # Optional losses (available for all DA methods)
+  # ========================================
+  
+  # Entropy minimization on target predictions
+  # Available for: all DA methods (adversarial, sinkhorn, mmd, energy)
+  lambda_entropy: 0.0                # Weight for entropy loss on target predictions
+  #  WARNING: lambda_entropy > 0.1 can cause model collapse to majority class!
+  # 
+  # Entropy minimization encourages confident predictions, but without target supervision,
+  # the model can become too confident in wrong predictions (all -> spiral class).
+  # RECOMMENDED: lambda_entropy in [0.01, 0.1] range, or set to 0.0 to disable
+  # Monitor class diversity during training if using entropy minimization
+  
+  # Optional OT-based alignment loss (from modeling.ot_loss.OTAlignmentLoss)
+  # Available for: all DA methods (adversarial, sinkhorn, mmd, energy)
+  # This is a purely feature-based loss that operates on source/target latents (no labels).
+  # It combines Sinkhorn OT distance, matched-pair MSE, and top-k worst pair costs.
+  lambda_ot: 0.0                     # Weight for OT-based alignment loss (0.0 = disabled)
+  # This loss is added on top of the standard DA loss:
+  # Total Loss = L_CE + L_domain + lambda_entropy * L_entropy + lambda_ot * L_OT
+  
+  # OT loss hyperparameters (only used if lambda_ot > 0.0)
+  ot_lambda_ot: 0.3                  # Weight for Sinkhorn OT distance component
+  ot_lambda_match: 0.6               # Weight for matched-pair MSE component
+  ot_lambda_topk: 0.1                # Weight for top-k worst pair cost component
+  ot_epsilon: 0.05                   # Regularization parameter for Sinkhorn OT
+  ot_n_iter: 50                      # Number of iterations for Sinkhorn OT
+  match_epsilon: 0.05                # Regularization parameter for matching
+  match_n_iter: 20                   # Number of iterations for matching
+  ot_topk: 5                         # Number of worst pairs to consider for top-k loss
+
+  # ========================================
+  # Adversarial DA parameters
+  # (ONLY used if method='adversarial')
+  # ========================================
+  
+  lambda_grl: 0.25                   # Gradient reversal scaling (constant value if no schedule)
+  
+  # Lambda GRL scheduling (NEW) - gradually ramp up adversarial strength
+  # Recommended for stability: start from 0.0 and ramp up to final value
+  lambda_grl_schedule: null          # Options: null (use constant lambda_grl) | dict with schedule config
+  # Example:
+  # lambda_grl_schedule:
+  #   start: 0.0                     # Starting lambda value
+  #   end: 0.4                       # Final lambda value
+  #   type: "sigmoid"                # Schedule type: "linear" | "cosine" | "sigmoid" | "step" | "polynomial" | "constant"
+  #   # Optional parameters for sigmoid:
+  #   # midpoint: 0.5                # Fraction of training where lambda reaches midpoint (0.0-1.0)
+  #   # scale: 0.1                   # Controls steepness of sigmoid curve
+  #   # Optional parameters for step:
+  #   # step_size: 10                # Increase lambda every N epochs
+  #   # Optional parameters for polynomial:
+  #   # power: 2.0                   # Polynomial power
+  
+  # latent_dim: null                 # Dimension of latent space from feature extractor, automatically calculated from the model if not provided
   domain_hidden_dim: 256             # Hidden units in domain classifier
-  use_projection: true               # Whether to use a projection layer
+  use_projection: true               # Whether to use a projection layer before domain classifier
   domain_projection_dim: 128         # Dimension of domain projection layer (only if use_projection=True)
 
-  # OT-based DA parameters ( ONLY used if method in ["sinkhorn", "mmd", "energy"])
+  # ========================================
+  # OT-based DA parameters (Sinkhorn/MMD/Energy)
+  # (ONLY used if method in ["sinkhorn", "mmd", "energy"])
+  # ========================================
+  
   # Fixed weight for the domain adaptation loss
-  # Total Loss = L_CE + (lambda_da * L_DA)
+  # Total Loss = L_CE + (lambda_da * L_DA) + lambda_entropy * L_entropy + lambda_ot * L_OT
   lambda_da: 0.1                     # Domain adaptation loss weight
-  sinkhorn_blur: 10.0                # Sinkhorn regularization parameter
-  sinkhorn_p: 2                       # Sinkhorn distance exponent
+  sinkhorn_blur: 10.0                # Sinkhorn regularization parameter (blur/epsilon)
+  sinkhorn_p: 2                      # Sinkhorn distance exponent (p-norm)
 
-  # Trainable weights and sigma schedule ( ONLY used if method in ["sinkhorn", "mmd", "energy"])
-  use_trainable_weights: false        # True to learn importance weights for OT (if True, set a value for eta_1_init and eta_2_init)
-  eta_1_init: 0.1                     # Initial eta_1 for trainable weights
-  eta_2_init: 1.0                     # Initial eta_2 for trainable weights
+  # Trainable weights (learn relative importance of CE vs DA loss)
+  use_trainable_weights: false       # True to learn importance weights for multi-task learning
+  eta_1_init: 0.1                    # Initial eta_1 for classification loss (if use_trainable_weights=True)
+  eta_2_init: 1.0                    # Initial eta_2 for DA loss (if use_trainable_weights=True)
 
-  use_sigma_schedule: false           # True to apply schedule to sigma for OT (if True, set a value for sigma_schedule_type)
-
-  sigma_schedule_type: "exponential"  # Options: 'exponential' | 'linear' | 'cosine' | 'step' | 'polynomial' | 'constant'
+  # Sigma scheduling (anneal blur parameter during training)
+  use_sigma_schedule: false          # True to apply schedule to sigma/blur parameter
+  
+  sigma_schedule_type: "exponential" # Options: 'exponential' | 'linear' | 'cosine' | 'step' | 'polynomial' | 'constant'
   # Supported schedules:
         # - exponential: sigma = sigma_initial_blur * (sigma_decay_rate ** epoch)
         # - linear: sigma = sigma_initial_blur - (sigma_initial_blur - sigma_final_blur) * (epoch / num_epochs)
@@ -232,15 +316,17 @@ training:
         # - step: sigma = sigma_initial_blur * (sigma_step_gamma ** (epoch // sigma_step_size))
         # - polynomial: sigma = (sigma_initial_blur - sigma_final_blur) * (1 - epoch/num_epochs)^sigma_poly_power + sigma_final_blur
         # - constant: sigma = sigma_initial_blur (no decay)
-  sigma_initial_blur: 10.0
-  sigma_decay_rate: 0.6          # for long training use 0.9-0.95
-  sigma_final_blur: 1.0
-  sigma_min_blur: 0.01            # Minimum blur floor to prevent numerical underflow
+  
+  sigma_initial_blur: 10.0           # Starting blur value
+  sigma_decay_rate: 0.95             # Exponential decay rate (for long training use 0.9-0.95, not 0.6!)
+  sigma_final_blur: 1.0              # Final blur value (for linear/cosine/polynomial)
+  sigma_min_blur: 0.1                # Minimum blur floor to prevent numerical underflow
+  
   # IMPORTANT: For long training (>50 epochs) with exponential decay:
   # - Use milder decay rate (0.9-0.95) OR rely on sigma_min_blur floor
   # - Tutorial used 6 epochs where 0.6^6 ≈ 0.047 is safe
   # - For 100 epochs: 0.6^100 → 0 (underflow!), but 0.95^100 ≈ 0.0059 (OK)
   
-  sigma_step_size: 2
-  sigma_step_gamma: 0.5
-  sigma_poly_power: 2.0
+  sigma_step_size: 2                 # Step size for step schedule
+  sigma_step_gamma: 0.5              # Decay factor for step schedule
+  sigma_poly_power: 2.0              # Polynomial power for polynomial schedule
