@@ -18,22 +18,24 @@ Domain adaptation experiments for galaxy morphology classification (source: TNG5
 
 ## Some Results
 
-### adversarial_ota
+### `adversarial_ota` | Adversarial - ESCNN (E2) | [Config File](./adversarial_ota/ckpts/adversarial_ota.yml)
+
+![Training](./adversarial_ota/logs/adversarial_ota_history.png)
+
+![Loss Curve](./adversarial_ota/logs/adversarial_ota_history_loss.png)
 
 ![Confusion Matrices](./plots/adversarial_ota_confusion_matrices.png)
 
 ![Latent Space TSNE](./plots/adversarial_ota_latent_space_tsne_pred.png)
-![Loss Curve](./adversarial_ota/logs/adversarial_ota_history_loss.png)
-![Loss Curve](./adversarial_ota/logs/adversarial_ota_history_accuracy.png)
 
 -------------------------------
 
-### sinkhorn_trainable_sigma_ota
+### `sinkhorn_trainable_sigma_ota` | Sinkhorn - ESCNN (E2) | [Config File](./sinkhorn_trainable_sigma_ota/ckpts/sinkhorn_trainable_sigma_ota.yml)
+
+![Training](./sinkhorn_trainable_sigma_ota/logs/sinkhorn_trainable_sigma_ota_history.png)
+
+![Loss Curve](./sinkhorn_trainable_sigma_ota/logs/sinkhorn_trainable_sigma_ota_history_loss.png)
 
 ![Confusion Matrices](./plots/sinkhorn_trainable_sigma_ota_confusion_matrices.png)
 
 ![Latent Space TSNE](./plots/sinkhorn_trainable_sigma_ota_latent_space_tsne_pred.png)
-
-![Loss Curve](./sinkhorn_trainable_sigma_ota/logs/sinkhorn_trainable_sigma_ota_history_loss.png)
-
-![Training](./sinkhorn_trainable_sigma_ota/logs/sinkhorn_trainable_sigma_ota_history_accuracy.png)
