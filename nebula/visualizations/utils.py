@@ -40,6 +40,7 @@ COLORS = {
     "eta1": "#88c0d0",
     "eta2": "#a64d79",
     "sigma": "#d08770",
+    "lambda_grl": "#8B4513",
     "warmup_bg": "#5b94a4",
 }
 
@@ -90,13 +91,27 @@ def add_legend(ax, ax_twin=None, loc="upper right", outside=False, transparent=F
     #     handles.append(empty_handle)
     #     labels.append(loss)
 
-    framealpha = 0.5 if transparent else 0.95
-    ax.legend(
-        unique_labels.values(),
-        unique_labels.keys(),
-        loc=loc,
-        framealpha=framealpha,
-    )
+    framealpha = 0.3 if transparent else 0.95
+    
+    if outside and loc == "upper left":
+        ax.legend(
+            unique_labels.values(),
+            unique_labels.keys(),
+            loc="center left",
+            bbox_to_anchor=(-0.28, 0.5),
+            framealpha=framealpha,
+            bbox_transform=ax.transAxes,
+            fontsize=11,
+            frameon=True,
+        )
+    else:
+        ax.legend(
+            unique_labels.values(),
+            unique_labels.keys(),
+            loc=loc,
+            framealpha=framealpha,
+            fontsize=11,
+        )
 
 
 def add_equation_box(ax, equation, position="bottom_right"):
@@ -114,14 +129,14 @@ def add_equation_box(ax, equation, position="bottom_right"):
     if position == "bottom_center":
         ax.text(
             0.5,
-            -0.17,
+            -0.42,
             equation,
             ha="center",
             va="top",
             transform=ax.transAxes,
-            fontsize=16,
+            fontsize=18,
             bbox={
-                "boxstyle": "round,pad=0.4",
+                "boxstyle": "round,pad=0.5",
                 "facecolor": "white",
                 "edgecolor": "#d8dee9",
                 "linewidth": 1.2,
@@ -193,13 +208,9 @@ def get_loss_eq(trainer):
 
         # Check for optional losses
         λ_entropy = getattr(trainer.config, "lambda_entropy", 0.0)
-        λ_ot = getattr(trainer, "lambda_ot", 0.0)
+        λ_ot = getattr(trainer.config, "lambda_ot", getattr(trainer, "lambda_ot", 0.0))
         has_entropy = λ_entropy > 0.0
-        has_align = (
-            λ_ot > 0.0
-            and hasattr(trainer, "ot_da_loss")
-            and trainer.ot_da_loss is not None
-        )
+        has_align = λ_ot > 0.0
 
         λ_str = _format_num(λ) if λ is not None else r"\lambda_{\mathrm{DA}}"
 
@@ -238,13 +249,9 @@ def get_loss_eq(trainer):
 
         # Check for optional losses
         λ_entropy = getattr(trainer.config, "lambda_entropy", 0.0)
-        λ_ot = getattr(trainer, "lambda_ot", 0.0)
+        λ_ot = getattr(trainer.config, "lambda_ot", getattr(trainer, "lambda_ot", 0.0))
         has_entropy = λ_entropy > 0.0
-        has_align = (
-            λ_ot > 0.0
-            and hasattr(trainer, "ot_da_loss")
-            and trainer.ot_da_loss is not None
-        )
+        has_align = λ_ot > 0.0
 
         eq_parts = [
             rf"$\mathcal{{L}}_{{\mathrm{{total}}}} = ",
@@ -272,13 +279,9 @@ def get_loss_eq(trainer):
         )
 
         λ_entropy = getattr(trainer.config, "lambda_entropy", 0.0)
-        λ_ot = getattr(trainer, "lambda_ot", 0.0)
+        λ_ot = getattr(trainer.config, "lambda_ot", getattr(trainer, "lambda_ot", 0.0))
         has_entropy = λ_entropy > 0.0
-        has_align = (
-            λ_ot > 0.0
-            and hasattr(trainer, "ot_da_loss")
-            and trainer.ot_da_loss is not None
-        )
+        has_align = λ_ot > 0.0
 
         # Note: lambda_grl controls gradient reversal strength, not a direct multiplier
         # But we show it in the equation for clarity
