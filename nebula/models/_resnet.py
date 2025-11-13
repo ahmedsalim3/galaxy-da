@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import torch
 import torch.nn as nn
 import torchvision.models as tv_models
 
@@ -54,7 +55,11 @@ class ResNetBackbone(nn.Module):
             nn.Linear(256, config.num_classes),
         )
 
+        self.class_scales = nn.Parameter(torch.ones(config.num_classes))
+        self.class_embed = nn.Embedding(config.num_classes, 256)
+
     def forward(self, x):
         z = self.backbone(x)
         out = self.classifier(z)
+        out = out * self.class_scales.unsqueeze(0)
         return out, z
