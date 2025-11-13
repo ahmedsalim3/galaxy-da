@@ -664,16 +664,18 @@ class BaseTrainer:
             log_prefix = " Warmup" if is_warmup else " Epoch"
 
             # Line 1: Losses
+            def fmt(v):
+                return f"{v:.2e}" if v is not None and abs(v) < 0.0001 and v != 0.0 else f"{v:.4f}"
             loss_parts = [
                 f"{log_prefix} {epoch+1}:",
-                f"CE={metrics['ce_loss']:.4f}",
-                f"DA={metrics['da_loss']:.4f}",
-                f"Total={metrics['train_loss']:.4f}",
+                f"CE={fmt(metrics['ce_loss'])}",
+                f"DA={fmt(metrics.get('da_loss', 0.0))}",
+                f"Total={fmt(metrics['train_loss'])}",
             ]
             if "align_loss" in metrics:
-                loss_parts.append(f"Align={metrics['align_loss']:.4f}")
+                loss_parts.append(f"Align={fmt(metrics['align_loss'])}")
             if "entropy_loss" in metrics:
-                loss_parts.append(f"Ent={metrics['entropy_loss']:.4f}")
+                loss_parts.append(f"Ent={fmt(metrics['entropy_loss'])}")
             logger.info("  ".join(loss_parts))
 
             # Line 2: Accuracies
@@ -685,13 +687,13 @@ class BaseTrainer:
             # Line 3: Extra metrics (eta, lambda_grl, sigma)
             extra = []
             if "eta_1" in metrics and metrics["eta_1"] is not None:
-                extra.append(f"η₁={metrics['eta_1']:.4f}")
+                extra.append(f"η₁={fmt(metrics['eta_1'])}")
             if "eta_2" in metrics and metrics["eta_2"] is not None:
-                extra.append(f"η₂={metrics['eta_2']:.4f}")
+                extra.append(f"η₂={fmt(metrics['eta_2'])}")
             if "lambda_grl" in metrics:
-                extra.append(f"λ_grl={metrics['lambda_grl']:.4f}")
+                extra.append(f"λ_grl={fmt(metrics['lambda_grl'])}")
             if "sigma" in metrics:
-                extra.append(f"σ={metrics['sigma']:.4f}")
+                extra.append(f"σ={fmt(metrics['sigma'])}")
 
             if extra:
                 logger.info("          " + ", ".join(extra))
@@ -703,7 +705,7 @@ class BaseTrainer:
                         target_loader is not None
                     ), "early_stopping_metric 'f1' requires a target_loader"
                     metric_value = eval_f1_score(self.model, target_loader, self.device)
-                    logger.info(f" Target F1: {metric_value:.4f}")
+                    logger.info(f" Target F1: {fmt(metric_value)}")
                 elif metric == "accuracy":
                     assert (
                         target_loader is not None
@@ -712,13 +714,13 @@ class BaseTrainer:
                     logger.info(f" Target Accuracy: {metric_value:.2f}%")
                 elif metric == "train_loss":
                     metric_value = metrics["train_loss"]
-                    logger.info(f" Train loss: {metric_value:.4f}")
+                    logger.info(f" Train loss: {fmt(metric_value)}")
                 elif metric == "ce_loss":
                     metric_value = metrics["ce_loss"]
-                    logger.info(f" CE loss: {metric_value:.4f}")
+                    logger.info(f" CE loss: {fmt(metric_value)}")
                 elif metric == "da_loss":
                     metric_value = metrics["da_loss"]
-                    logger.info(f" DA loss: {metric_value:.4f}")
+                    logger.info(f" DA loss: {fmt(metric_value)}")
                 else:
                     raise ValueError(f"Unknown early stopping metric: {metric}")
 
@@ -731,7 +733,7 @@ class BaseTrainer:
                     self.best_metric_model = copy.deepcopy(self.model.state_dict())
                     logger.info(
                         f" Saved best model based on {metric} "
-                        f"(value: {metric_value:.4f})"
+                        f"(value: {fmt(metric_value)})"
                     )
 
                 if should_stop:
