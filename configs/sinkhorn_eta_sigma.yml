@@ -12,7 +12,7 @@ seed: 42
 data:
   source_img_dir: "data/source/galaxy_images_rgb"
   source_labels: "data/source/source_galaxy_labels.csv"
-  target_img_dir: "data/target/gz2_images"
+  target_img_dir: "data/target/gz2_images/images"
   target_labels: "data/target/gz2_galaxy_labels.csv" # This around 2568 images
   # target_labels: "data/target/gz2_galaxy_labels_master.csv" # around 6416 images
   # target_labels: "data/target/gz2_galaxy_labels_master.json" # around 20,000 images
