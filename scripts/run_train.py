@@ -8,6 +8,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 import pandas as pd
 import torch
 import yaml
+from geomloss.distance_metrics import DISTANCE_METRICS
 
 from nebula.commons import Logger, log_config, set_all_seeds
 from nebula.data.dataloaders import GalaxyDataModule
@@ -186,7 +187,8 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
         }
         trainer_config = DAAdversarialConfig(**adv_params)
         trainer = DAAdversarialTrainer(model, trainer_config, device)
-    elif method in ["sinkhorn", "mmd", "energy"]:
+    #elif method in ["sinkhorn", "mmd", "energy","inner_product","cosine","jaccard","dice_coefficient","kumar_hassebrook","harmonic_mean","euclidean","manhattan","chebyshev","minkowski","weighted_minkowski","gower","avg_l1_linf"]:
+    elif method in ["sinkhorn", "mmd", "energy"] or method in DISTANCE_METRICS:
         da_params = {
             **base_params,
             "lambda_da": float(

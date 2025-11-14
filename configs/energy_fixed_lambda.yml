@@ -3,20 +3,20 @@
 # to minimize the discrepancy between source and target feature distributions.
 # Uses a fixed weight (lambda_da) for the domain adaptation loss.
 
-experiment_name: "energy_fixed_lambda"
+experiment_name: "energy_fixed_lambda_cnn"
 seed: 42
 
 data:
   source_img_dir: "data/source/galaxy_images_rgb"
   source_labels: "data/source/source_galaxy_labels.csv"
-  target_img_dir: "data/target/gz2_images"
+  target_img_dir: "data/target/gz2_images/images/"
   target_labels: "data/target/gz2_galaxy_labels.csv" # This around 2568 images
   # target_labels: "data/target/gz2_galaxy_labels_master.csv" # around 6416 images
   # target_labels: "data/target/gz2_galaxy_labels_master.json" # around 20,000 images
-  source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
-  source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
-  target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]
-  target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]
+  #source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
+  #source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
+  #target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]
+  #target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]
   include_rotations: false
   shared_norm: false
   image_size: [28, 28]
@@ -31,7 +31,8 @@ training:
   # --- Core Method ---
   # Set to 'energy'
   method: "energy"
-  num_epochs: 100
+  num_epochs: 200
+  warmup_epochs: 20
   lr: 1e-3
   optimizer: "adamw"
   weight_decay: 1e-2
