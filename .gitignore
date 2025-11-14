@@ -51,6 +51,10 @@ coverage.xml
 .pytest_cache/
 cover/
 
+data/updated_target/data/images_gz2/__MACOSX/images/*.jpg 
+data/updated_target/data/images_gz2/images/*.jpg
+
+
 # Translations
 *.mo
 *.pot
