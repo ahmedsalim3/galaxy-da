@@ -56,8 +56,8 @@ data:
   # The below examples were calculated using the nebula/data/normalization.py script.
   # Choose the one that matches your dataset.
   # If not provided, will be computed automatically
-  source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
-  source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
+  #source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
+  #source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
   
   # target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]    # GZ2 mean from data/target/gz2_galaxy_labels_master.csv
   # target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]     # GZ2 std from data/target/gz2_galaxy_labels_master.csv
@@ -220,7 +220,7 @@ training:
   early_stopping_patience: 5       # Options: None | integer (stop if validation metric doesn't improve after these many epochs)
   # NOTE: (Metric to monitor for early stopping)
   
-  early_stopping_metric: "train_loss"  # Options: "train_loss"| "ce_loss" | "da_loss" | "f1" | "accuracy" 
+  early_stopping_metric: "f1"  # Options: "train_loss"| "ce_loss" | "da_loss" | "f1" | "accuracy" 
   # NOTE: "f1" and "accuracy" require target_loader to be provided (doesn't work in baseline where we only pass source loader)
 
 

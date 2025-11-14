@@ -54,3 +54,7 @@ for CONFIG_PATH in $CONFIGS; do
 
     python3 scripts/run_eval.py "$CKPT_PATH" --embed-method "$EMBED_METHOD"
 done
+echo "All Done"
+
+
+
