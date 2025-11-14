@@ -42,7 +42,7 @@ for CONFIG_PATH in $CONFIGS; do
 
     python3 scripts/run_eval.py "$CKPT_PATH"
 done
-
+echo "All Done"
 
 
 
