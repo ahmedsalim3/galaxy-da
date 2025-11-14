@@ -9,9 +9,14 @@ class BaseTrainerConfig:
     num_epochs: int = 6
     warmup_epochs: int = 0
     lr: float = 1e-4
-    optimizer: str = "adamw"
+    optimizer: str = "adamw"  # "adamw" | "adam" | "sgd"
     weight_decay: float = 1e-2
     max_norm: float = 10.0
+
+    # --- LR scheduling ---
+    lr_scheduler: Optional[str] = None  # None | "cosine" | "step" | "exponential"
+    min_lr: float = 0.0  # minimum LR for cosine annealing
+
     criterion: str = "cross_entropy"  # "cross_entropy" | "focal"
 
     use_class_weights: bool = False
@@ -35,6 +40,10 @@ class BaseTrainerConfig:
     early_stopping_metric: str = "f1"  # "f1" or "accuracy" (evaluated on target data)
 
 
+# Domain-adaptation variants
+# ---------------------------
+
+
 @dataclass
 class NoDAConfig(BaseTrainerConfig):
     pass
@@ -42,14 +51,45 @@ class NoDAConfig(BaseTrainerConfig):
 
 @dataclass
 class DAFixedLambdaConfig(BaseTrainerConfig):
+    """Domain adaptation with a fixed lambda for the DA loss.
+
+    Attributes
+    ----------
+    lambda_da:
+        Scalar weight applied to the domain-alignment loss.
+    method:
+        Backend method used by :class:`DomainAdaptationLoss` (e.g. "sinkhorn").
+    sinkhorn_blur, sinkhorn_p:
+        Arguments forwarded to GeomLoss when using the Sinkhorn/MMD variants.
+    lambda_ot:
+        Weight for the *OTAlignmentLoss*
+    lambda_entropy:
+        Weight for entropy minimization loss on target predictions.
+        Encourages confident predictions on target domain.
+    """
+
     lambda_da: float = 0.1
     method: str = "sinkhorn"
     sinkhorn_blur: float = 10.0
     sinkhorn_p: int = 2
 
+    # Optional OT-based alignment loss (OTAlignmentLoss)
+    lambda_ot: float = 0.0  # 0.0 = disabled
+
+    # Entropy minimization on target predictions
+    lambda_entropy: float = 0.0  # 0.0 = disabled
+
 
 @dataclass
 class DATrainableWeightsConfig(DAFixedLambdaConfig):
+    """
+    DA config where the CE/DA weights are learned.
+
+    The relative importance of CE vs. DA loss is handled by
+    :class:`TrainableLossWeights` (Kendall et al., 2018).
+    https://arxiv.org/pdf/1705.07115
+    """
+
     eta_1_init: float = 0.1
     eta_2_init: float = 1.0
 
@@ -81,20 +121,17 @@ class DATrainableWeightsSigmaConfig(DATrainableWeightsConfig):
     sigma_min_blur: float = 1e-2  # Minimum blur to prevent underflow (enforced floor)
 
     # Exponential decay: sigma = initial_blur * (decay_rate ** epoch)
-    sigma_decay_rate: float = 0.6  # Tutorial uses 0.6 (or 0.4 in some examples)
+    # For other schedules, see :func:`get_sigma_schedule`.
+    sigma_decay_rate: float = 0.6
 
     # Step decay: sigma = initial_blur * (step_gamma ** (epoch // step_size))
-    sigma_step_size: int = 2  # Epochs per step
-    sigma_step_gamma: float = 0.5  # Decay factor per step
+    sigma_step_size: int = 2
+    sigma_step_gamma: float = 0.5
 
     # Polynomial decay: sigma = (initial - final) * (1 - epoch/num_epochs)^power + final
     sigma_poly_power: float = (
         2.0  # Polynomial power (1.0 = linear, 2.0 = quadratic, etc.)
     )
-
-    # Cosine annealing: smooth cosine curve from initial to final
-    # No additional parameters needed beyond initial_blur and final_blur
-
 
 @dataclass
 class DAAdversarialConfig(BaseTrainerConfig):
@@ -108,10 +145,23 @@ class DAAdversarialConfig(BaseTrainerConfig):
 
     Reference: "Domain-Adversarial Training of Neural Networks" (Ganin et al., 2016)
     https://arxiv.org/abs/1505.07818
+
+    The optional :pyattr:`lambda_ot` parameter adds the *OTAlignmentLoss*
     """
 
     # Gradient reversal strength
     lambda_grl: float = 0.25  # Strength of gradient reversal (tutorial uses 0.25)
+    
+    # GRL strength scheduling
+    lambda_grl_schedule: Optional[dict] = (
+        None  # {"start": float, "end": float, "type": str}
+    )
+
+    # Entropy minimisation on target predictions
+    lambda_entropy: float = 0.0
+
+    # Optional Nebula OT alignment
+    lambda_ot: float = 0.0  # 0.0 = disabled
 
     # Domain classifier architecture
     latent_dim: int = 6272  # Dimension of latent space from feature extractor

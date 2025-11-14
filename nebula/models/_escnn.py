@@ -194,10 +194,17 @@ class ESCNNSteerable(nn.Module):
         ft2 = escnn_nn.FieldType(self.r2_act, [rr] * (config.base_width * 2))
         ft3 = escnn_nn.FieldType(self.r2_act, [rr] * (config.base_width * 4))
 
-        # Three conv blocks with stride-2 downsampling (Section 2.6 architecture)
+        # Deeper architecture: 4 conv blocks for better feature extraction
+        # Original: 3 blocks, now: 4 blocks with additional capacity
         self.block1 = EqvConvBlock(self.in_type, ft1, kernel_size=5, stride=2)
         self.block2 = EqvConvBlock(ft1, ft2, kernel_size=3, stride=2)
-        self.block3 = EqvConvBlock(ft2, ft3, kernel_size=3, stride=2)
+        self.block3 = EqvConvBlock(
+            ft2, ft3, kernel_size=3, stride=1
+        )  # No stride - keep spatial info
+        # Add 4th block with same width for more depth
+        self.block4 = EqvConvBlock(
+            ft3, ft3, kernel_size=3, stride=1
+        )  # Additional depth
 
         # Group pooling: projects to trivial representation (rotation invariance)
         self.gpool = escnn_nn.GroupPooling(ft3)
@@ -205,13 +212,20 @@ class ESCNNSteerable(nn.Module):
         # After group pooling, we get scalars - one per field in ft3
         self.feature_dim = self.gpool.out_type.size
 
-        # Simple MLP head for classification
+        # Larger MLP head for classification - better capacity for domain adaptation
+        # Original: Linear(feature_dim → 128 → 3)
+        # New: Linear(feature_dim → 256 → 128 → 3) with dropout
         self.classifier = nn.Sequential(
-            nn.Linear(self.feature_dim, 128),
+            nn.Linear(self.feature_dim, 256),
             nn.ReLU(inplace=True),
             nn.Dropout(config.dropout),
+            nn.Linear(256, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(config.dropout * 0.5),  # Less dropout in second layer
             nn.Linear(128, config.num_classes),
         )
+
+        self.class_scales = nn.Parameter(torch.ones(config.num_classes))
 
     def forward(self, x: torch.Tensor):
         """Forward pass through the equivariant encoder.
@@ -243,10 +257,11 @@ class ESCNNSteerable(nn.Module):
         # Wrap input as geometric tensor with trivial field type
         x = escnn_nn.GeometricTensor(x, self.in_type)
 
-        # Equivariant feature extraction
+        # Equivariant feature extraction (deeper architecture)
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
+        x = self.block4(x)  # Additional depth
 
         # Spatial pooling: remove spatial dims while staying equivariant
         t = x.tensor
@@ -259,6 +274,8 @@ class ESCNNSteerable(nn.Module):
         # Flatten and classify
         z = x.tensor.view(x.tensor.size(0), -1)
         out = self.classifier(z)
+
+        out = out * self.class_scales.unsqueeze(0)
 
         return out, z
 

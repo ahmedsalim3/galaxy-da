@@ -1,4 +1,5 @@
-geomloss>=0.2.6
+# geomloss is installed from local git submodule
+-e ./geomloss
 matplotlib==3.10.5
 numpy==1.26.4
 pandas==2.2.2
