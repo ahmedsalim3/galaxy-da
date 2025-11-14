@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 from typing import Dict, Optional
 
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -34,8 +35,10 @@ class BaseTrainer:
 
         self.criterion = None
         self.optimizer = None
+        self.scheduler = None
         self.best_loss = float("inf")
         self.best_model = None
+        self.best_metric_model = None
         self.early_stopping = None
         self.history = {
             "train_loss": [],
@@ -43,9 +46,6 @@ class BaseTrainer:
             "da_loss": [],
             "source_acc": [],
             "target_acc": [],
-            # Optional (only for some trainers)
-            "eta_1": [],
-            "eta_2": [],
         }
         self.diag_history = {
             "mmd2": [],
@@ -176,15 +176,33 @@ class BaseTrainer:
         else:
             raise ValueError(f"Unknown criterion: {crit_name}")
 
-    def _compute_class_weights(self, source_loader) -> torch.Tensor:
+    def _compute_class_weights(self, source_loader) -> Optional[torch.Tensor]:
         if not self.config.use_class_weights:
             return None
         logger.info("Computing class weights from source training data...")
 
-        all_labels = []
-        for _, labels in source_loader:
-            all_labels.append(labels)
-        all_labels = torch.cat(all_labels, dim=0)
+        all_labels = None
+        try:
+            ds = getattr(source_loader, "dataset", None)
+            if ds is not None and hasattr(ds, "dataset") and hasattr(ds, "indices"):
+                base_ds = ds.dataset
+                if hasattr(base_ds, "df"):
+                    base_labels_np = base_ds.df["label"].values
+                    idxs = np.asarray(ds.indices)
+                    if getattr(base_ds, "include_rotations", False):
+                        base_idxs = (idxs // 8).astype(int)
+                    else:
+                        base_idxs = idxs.astype(int)
+                    selected = base_labels_np[base_idxs]
+                    all_labels = torch.from_numpy(selected).to(self.device)
+        except Exception as e:
+            logger.warning(f"Could not compute class weights from source loader: {e}")
+
+        if all_labels is None:
+            labels_list = []
+            for _, labels in source_loader:
+                labels_list.append(labels.to(self.device))
+            all_labels = torch.cat(labels_list, dim=0)
 
         # Compute weights
         class_weights = compute_class_weights(
@@ -235,6 +253,131 @@ class BaseTrainer:
 
         return class_weights
 
+    def _compute_class_scales(self, source_loader) -> Optional[torch.Tensor]:
+        """
+        Compute data-driven class scales to boost minority class predictions.
+
+        Unlike class weights (used in loss), these scales are applied to logits
+        to boost predictions for underrepresented classes.
+
+        Formula: scale = sqrt(max_count / count) normalized so majority class = 1.0
+        This is less aggressive than full inverse frequency but still helps minorities.
+
+        Returns:
+            torch.Tensor of shape [num_classes] with scales for each class.
+        """
+        logger.info("Computing class scales from source training data...")
+
+        all_labels = None
+        try:
+            ds = getattr(source_loader, "dataset", None)
+            if ds is not None and hasattr(ds, "dataset") and hasattr(ds, "indices"):
+                base_ds = ds.dataset
+                if hasattr(base_ds, "df"):
+                    base_labels_np = base_ds.df["label"].values
+                    idxs = np.asarray(ds.indices)
+                    if getattr(base_ds, "include_rotations", False):
+                        base_idxs = (idxs // 8).astype(int)
+                    else:
+                        base_idxs = idxs.astype(int)
+                    selected = base_labels_np[base_idxs]
+                    all_labels = torch.from_numpy(selected).to(self.device)
+        except Exception as e:
+            logger.warning(f"Could not extract labels efficiently: {e}")
+
+        if all_labels is None:
+            try:
+                labels_list = []
+                for _, labels in source_loader:
+                    labels_list.append(labels.to(self.device))
+                all_labels = torch.cat(labels_list, dim=0)
+            except Exception as e:
+                logger.warning(
+                    f"Could not compute class scales from source loader: {e}"
+                )
+                return None
+
+        # Compute class counts
+        num_classes = int(all_labels.max().item()) + 1
+        class_counts = torch.zeros(num_classes, dtype=torch.float32, device=self.device)
+        for c in range(num_classes):
+            class_counts[c] = (all_labels == c).sum()
+
+        # Compute scales: sqrt(max_count / count)
+        max_count = class_counts.max()
+        scales = torch.sqrt(
+            max_count / (class_counts + 1e-8)
+        )  # add epsilon to avoid div by zero
+
+        # Normalize so the majority class has scale 1.0
+        scales = scales / scales.max()
+
+        # Apply a moderate boost: scale = 1.0 + 0.5 * (scale - 1.0)
+        # This makes the effect less aggressive (halfway between no boost and full sqrt boost)
+        scales = 1.0 + 0.5 * (scales - 1.0)
+
+        logger.debug("Class distribution and scales:")
+        try:
+            from nebula.data.dataset import get_label_mappings
+
+            _, idx2label = get_label_mappings()
+            for i in range(num_classes):
+                name = idx2label.get(i, f"class_{i}")
+                count = int(class_counts[i].item())
+                pct = 100.0 * count / len(all_labels)
+                scale = scales[i].item()
+                logger.debug(
+                    f"  {name:<12}: {count:>5} samples ({pct:>5.1f}%) → scale {scale:.3f}"
+                )
+        except Exception as e:
+            logger.debug(f"Could not get class names: {e}")
+            for i in range(num_classes):
+                count = int(class_counts[i].item())
+                pct = 100.0 * count / len(all_labels)
+                scale = scales[i].item()
+                logger.debug(
+                    f"  Class {i}: {count:>5} samples ({pct:>5.1f}%) → scale {scale:.3f}"
+                )
+
+        return scales
+
+    def _build_scheduler(self) -> Optional[optim.lr_scheduler._LRScheduler]:
+        assert self.optimizer is not None, "Optimizer must be built before scheduler"
+
+        scheduler_type = self.config.lr_scheduler
+        if scheduler_type is None:
+            return None
+
+        scheduler_type = scheduler_type.lower()
+        num_epochs = self.config.num_epochs
+        logger.info(f"Building LR scheduler: {scheduler_type}")
+
+        if scheduler_type == "cosine":
+            # Cosine annealing:
+            # lr decays following a cosine curve
+            min_lr = getattr(self.config, "min_lr", 0.0)
+            return optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=num_epochs, eta_min=min_lr
+            )
+        elif scheduler_type == "step":
+            # Step decay:
+            # reduce lr by gamma every step_size epochs
+            step_size = max(1, num_epochs // 3)  # Default: 3 steps
+            gamma = 0.1
+            return optim.lr_scheduler.StepLR(
+                self.optimizer, step_size=step_size, gamma=gamma
+            )
+        elif scheduler_type == "exponential":
+            # Exponential decay:
+            # lr = lr * gamma^epoch
+            gamma = 0.95
+            return optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=gamma)
+        else:
+            raise ValueError(
+                f"Unknown lr_scheduler: {scheduler_type}. "
+                "Supported: None, 'cosine', 'step', 'exponential'"
+            )
+
     def _get_optimizer_params(self):
         """Get parameters for optimizer. Override to add extra params in subclasses."""
         return self.model.parameters()
@@ -255,9 +398,13 @@ class BaseTrainer:
 
         raise ValueError(f"Unknown optimizer: {opt_name}")
 
-    def compute_total_loss(self, ce_loss, z_source, z_target):
+    def compute_total_loss(self, ce_loss, z_source, z_target, logits_target=None):
         """abstract method for subclasses to implement."""
         raise NotImplementedError
+
+    def get_epoch_metrics(self, epoch: int, is_warmup: bool) -> Dict[str, float]:
+        """abstract method for adding custom metrics at the end of each epoch."""
+        return {}
 
     def on_epoch_start(self, epoch: int):
         """hook called at the start of each training epoch."""
@@ -294,7 +441,18 @@ class BaseTrainer:
 
         # --- Loss Computation ---
         ce_loss = self.criterion(logits_s, s_labels)
-        total_loss, da_loss = self.compute_total_loss(ce_loss, z_s, z_t)
+        total_loss, loss_dict = self.compute_total_loss(ce_loss, z_s, z_t, logits_t)
+
+        assert isinstance(
+            loss_dict, dict
+        ), f"compute_total_loss must return (total_loss, loss_dict), got {type(loss_dict)}"
+
+        step_losses = {}
+        for key, value in loss_dict.items():
+            if isinstance(value, torch.Tensor):
+                step_losses[key] = value.item() if value.numel() == 1 else 0.0
+            else:
+                step_losses[key] = float(value)
 
         # --- Backward Pass ---
         self.optimizer.zero_grad()
@@ -319,11 +477,11 @@ class BaseTrainer:
         return {
             "total_loss": total_loss.item(),
             "ce_loss": ce_loss.item(),
-            "da_loss": da_loss.item() if da_loss is not None else 0.0,
             "correct_s": correct_s,
             "total_s": total_s,
             "correct_t": correct_t,
             "total_t": total_t,
+            **step_losses,
         }
 
     def train_epoch(
@@ -332,8 +490,9 @@ class BaseTrainer:
         self.model.train()
         self.on_epoch_start(epoch)
 
-        running_loss = running_ce = running_da = 0.0
+        running_loss = running_ce = 0.0
         correct_s = correct_t = total_s = total_t = 0
+        running_losses = {}  # all losses are saved in a dict
 
         loader = zip(source_loader, target_loader) if target_loader else source_loader
         total_steps = (
@@ -353,11 +512,23 @@ class BaseTrainer:
 
             running_loss += step_metrics["total_loss"]
             running_ce += step_metrics["ce_loss"]
-            running_da += step_metrics["da_loss"]
             correct_s += step_metrics["correct_s"]
             total_s += step_metrics["total_s"]
             correct_t += step_metrics["correct_t"]
             total_t += step_metrics["total_t"]
+            # accumulate all losses from loss_dict
+            for key, value in step_metrics.items():
+                if key not in [
+                    "total_loss",
+                    "ce_loss",
+                    "correct_s",
+                    "total_s",
+                    "correct_t",
+                    "total_t",
+                ]:
+                    if key not in running_losses:
+                        running_losses[key] = 0.0
+                    running_losses[key] += value
 
             # update progress bar ---
             pbar.set_postfix(
@@ -376,16 +547,18 @@ class BaseTrainer:
             self.best_model = copy.deepcopy(self.model.state_dict())
 
         ce_loss = running_ce / total_steps
-        da_loss = running_da / total_steps
         source_acc = 100 * correct_s / max(1, total_s)
         target_acc = 100 * correct_t / max(1, total_t)
+
+        # average all accumulated losses
+        avg_losses = {key: value / total_steps for key, value in running_losses.items()}
 
         metrics = {
             "train_loss": avg_loss,
             "ce_loss": ce_loss,
-            "da_loss": da_loss,
             "source_acc": source_acc,
             "target_acc": target_acc,
+            **avg_losses,
         }
 
         self.on_epoch_end(epoch, metrics)
@@ -402,12 +575,26 @@ class BaseTrainer:
         Args:
             eval_interval: Diagnostics schedule. >0: every N epochs, 0: only at end (default)
         """
-        # Build training components (criterion + optimizer)
+        # Build training components (criterion + optimizer + scheduler)
         if self.criterion is None:
             class_weights = self._compute_class_weights(source_loader)
             self.criterion = self._build_criterion(class_weights)
         if self.optimizer is None:
             self.optimizer = self._build_optimizer()
+        if self.scheduler is None and self.config.lr_scheduler is not None:
+            self.scheduler = self._build_scheduler()
+
+        # Initialize class scales for models with learnable scaling
+        if hasattr(self.model, "class_scales"):
+            class_scales = self._compute_class_scales(source_loader)
+            if class_scales is not None:
+                with torch.no_grad():
+                    self.model.class_scales.copy_(class_scales)
+                logger.info(f"Initialized class scales: {class_scales.cpu().numpy()}")
+            else:
+                logger.warning(
+                    "Could not compute class scales, using defaults (all 1.0)"
+                )
 
         if self.config.early_stopping_patience is not None:
             if self.early_stopping is None:
@@ -443,37 +630,73 @@ class BaseTrainer:
             _target_loader = None if is_warmup else target_loader
 
             metrics = self.train_epoch(source_loader, _target_loader, epoch)
-            for k, v in metrics.items():
-                self.history[k].append(v)
+
+            # Get custom epoch metrics from trainer
+            custom_metrics = self.get_epoch_metrics(epoch, is_warmup)
+            metrics.update(custom_metrics)
+
+            # current epoch number (for padding new metrics)
+            current_epoch_num = len(self.history.get("train_loss", []))
+
+            # all keys that should be in history (union of existing and current metrics)
+            all_keys = set(self.history.keys()) | set(metrics.keys())
+
+            # For each key, append the appropriate value
+            for k in all_keys:
+                if k not in self.history:
+                    # New metric: pad with None for all previous epochs
+                    self.history[k] = [None] * current_epoch_num
+
+                # Append current value (or None if not in metrics)
+                value = metrics.get(k, None)
+                self.history[k].append(value)
+
+            # Step learning rate scheduler (skip during warmup)
+            if self.scheduler is not None and not is_warmup:
+                self.scheduler.step()
+                current_lr = self.optimizer.param_groups[0]["lr"]
+                logger.debug(f"LR scheduler stepped. Current LR: {current_lr:.6f}")
+
+            # Build log message with all metrics
             logger.info(
                 "┌──────────────────────────────────────────────────────────────┐"
             )
             log_prefix = " Warmup" if is_warmup else " Epoch"
-            logger.info(
-                f"{log_prefix} {epoch+1}: CE={metrics['ce_loss']:.4f}, DA={metrics['da_loss']:.4f}, "
-                f"SAcc={metrics['source_acc']:.2f}%, TAcc={metrics['target_acc']:.2f}%"
-            )
-            if hasattr(self, "trainable_weights") and not is_warmup:
-                try:
-                    eta_1_val = float(self.trainable_weights.eta_1.item())
-                    eta_2_val = float(self.trainable_weights.eta_2.item())
-                    self.history["eta_1"].append(eta_1_val)
-                    self.history["eta_2"].append(eta_2_val)
-                    logger.info(
-                        f"           eta_1={eta_1_val:.4f}, eta_2={eta_2_val:.4f}"
-                    )
-                except Exception:
-                    self.history["eta_1"].append(None)
-                    self.history["eta_2"].append(None)
-            else:
-                self.history["eta_1"].append(None)
-                self.history["eta_2"].append(None)
-            if hasattr(self, "current_blur") and not is_warmup:
-                try:
-                    logger.info(f"           sigma={float(self.current_blur):.4f}")
-                except Exception:
-                    pass
 
+            # Line 1: Losses
+            def fmt(v):
+                return f"{v:.2e}" if v is not None and abs(v) < 0.0001 and v != 0.0 else f"{v:.4f}"
+            loss_parts = [
+                f"{log_prefix} {epoch+1}:",
+                f"CE={fmt(metrics['ce_loss'])}",
+                f"DA={fmt(metrics.get('da_loss', 0.0))}",
+                f"Total={fmt(metrics['train_loss'])}",
+            ]
+            if "align_loss" in metrics:
+                loss_parts.append(f"Align={fmt(metrics['align_loss'])}")
+            if "entropy_loss" in metrics:
+                loss_parts.append(f"Ent={fmt(metrics['entropy_loss'])}")
+            logger.info("  ".join(loss_parts))
+
+            # Line 2: Accuracies
+            logger.info(
+                f"          SAcc={metrics['source_acc']:.2f}%, "
+                f"TAcc={metrics['target_acc']:.2f}%"
+            )
+
+            # Line 3: Extra metrics (eta, lambda_grl, sigma)
+            extra = []
+            if "eta_1" in metrics and metrics["eta_1"] is not None:
+                extra.append(f"η₁={fmt(metrics['eta_1'])}")
+            if "eta_2" in metrics and metrics["eta_2"] is not None:
+                extra.append(f"η₂={fmt(metrics['eta_2'])}")
+            if "lambda_grl" in metrics:
+                extra.append(f"λ_grl={fmt(metrics['lambda_grl'])}")
+            if "sigma" in metrics:
+                extra.append(f"σ={fmt(metrics['sigma'])}")
+
+            if extra:
+                logger.info("          " + ", ".join(extra))
             if self.early_stopping is not None and not is_warmup:
                 metric = self.config.early_stopping_metric
                 # If using target-based metrics, require target_loader
@@ -482,7 +705,7 @@ class BaseTrainer:
                         target_loader is not None
                     ), "early_stopping_metric 'f1' requires a target_loader"
                     metric_value = eval_f1_score(self.model, target_loader, self.device)
-                    logger.info(f" Target F1: {metric_value:.4f}")
+                    logger.info(f" Target F1: {fmt(metric_value)}")
                 elif metric == "accuracy":
                     assert (
                         target_loader is not None
@@ -491,17 +714,29 @@ class BaseTrainer:
                     logger.info(f" Target Accuracy: {metric_value:.2f}%")
                 elif metric == "train_loss":
                     metric_value = metrics["train_loss"]
-                    logger.info(f" Train loss: {metric_value:.4f}")
+                    logger.info(f" Train loss: {fmt(metric_value)}")
                 elif metric == "ce_loss":
                     metric_value = metrics["ce_loss"]
-                    logger.info(f" CE loss: {metric_value:.4f}")
+                    logger.info(f" CE loss: {fmt(metric_value)}")
                 elif metric == "da_loss":
                     metric_value = metrics["da_loss"]
-                    logger.info(f" DA loss: {metric_value:.4f}")
+                    logger.info(f" DA loss: {fmt(metric_value)}")
                 else:
                     raise ValueError(f"Unknown early stopping metric: {metric}")
 
-                if self.early_stopping(metric_value):
+                old_best_score = self.early_stopping.best_score
+                should_stop = self.early_stopping(metric_value)
+                if (
+                    old_best_score is None
+                    or self.early_stopping.best_score != old_best_score
+                ):
+                    self.best_metric_model = copy.deepcopy(self.model.state_dict())
+                    logger.info(
+                        f" Saved best model based on {metric} "
+                        f"(value: {fmt(metric_value)})"
+                    )
+
+                if should_stop:
                     logger.info(
                         "└──────────────────────────────────────────────────────────────┘"
                     )
@@ -667,11 +902,15 @@ class BaseTrainer:
                          to save for easy evaluation.
         """
         import os
+        from pathlib import Path
 
         os.makedirs(os.path.dirname(path), exist_ok=True)
         checkpoint = {
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
+            "scheduler_state_dict": (
+                self.scheduler.state_dict() if self.scheduler is not None else None
+            ),
             "config": self.config,
             "full_config": full_config,
             "best_loss": self.best_loss,
@@ -679,6 +918,25 @@ class BaseTrainer:
         }
         torch.save(checkpoint, path)
         logger.info(f"Checkpoint saved to {path}")
+
+        if self.best_metric_model is not None:
+            best_model_path = str(
+                Path(path).parent
+                / f"{Path(path).stem}_best_{self.config.early_stopping_metric}.pt"
+            )
+            best_checkpoint = {
+                "model_state_dict": self.best_metric_model,
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "scheduler_state_dict": (
+                    self.scheduler.state_dict() if self.scheduler is not None else None
+                ),
+                "config": self.config,
+                "full_config": full_config,
+                "best_loss": self.best_loss,
+                "history": self.history,
+            }
+            torch.save(best_checkpoint, best_model_path)
+            logger.info(f"Best model checkpoint saved to {best_model_path}")
 
     def load_checkpoint(self, path: str):
         """
@@ -691,6 +949,17 @@ class BaseTrainer:
         # Build optimizer (subclasses will add their extra parameter groups)
         self.optimizer = self._build_optimizer()
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+        # Build and load scheduler if it exists
+        if self.config.lr_scheduler is not None:
+            self.scheduler = self._build_scheduler()
+            if (
+                "scheduler_state_dict" in checkpoint
+                and checkpoint["scheduler_state_dict"] is not None
+            ):
+                self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+                logger.info(f"Scheduler state loaded from checkpoint")
+
         self.best_loss = checkpoint["best_loss"]
         self.history = checkpoint["history"]
         self.config = checkpoint["config"]

@@ -41,10 +41,13 @@ class CNN(nn.Module):
             nn.Linear(128, num_classes),
         )
 
+        self.class_scales = nn.Parameter(torch.ones(num_classes))
+
     def forward(self, x):
         x = self.features(x)
         z = x.view(x.size(0), -1)
         out = self.classifier(z)
+        out = out * self.class_scales.unsqueeze(0)
         return out, z
 
 

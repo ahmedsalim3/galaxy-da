@@ -165,9 +165,20 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+__MACOSX/
+
 # Dataset files and images
 # ==============================================
 
+data/source/galaxy_images_rgb
 data/*/*/*.png
 data/*/*/*.jpg
 data/*/*/*.jpeg

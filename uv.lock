@@ -539,12 +539,19 @@ wheels = [
 [[package]]
 name = "geomloss"
 version = "0.2.6"
-source = { registry = "https://pypi.org/simple" }
+source = { directory = "geomloss" }
 dependencies = [
     { name = "numpy" },
     { name = "torch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/f4/f888e6a2f59da7e743b93532aa90a8b02bc7f828273263014b8e7bb3e1c1/geomloss-0.2.6.tar.gz", hash = "sha256:491c47085c5001b2cb6128ea541fd2d0a8808ae50e88a0798c7853c9d995faeb", size = 26752, upload_time = "2023-04-28T17:25:34.545Z" }
+
+[package.metadata]
+requires-dist = [
+    { name = "numpy" },
+    { name = "pykeops", marker = "extra == 'full'" },
+    { name = "torch" },
+]
+provides-extras = ["full"]
 
 [[package]]
 name = "identify"
@@ -1059,7 +1066,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "escnn", specifier = ">=1.0.11" },
-    { name = "geomloss", specifier = ">=0.2.6" },
+    { name = "geomloss", directory = "geomloss" },
     { name = "ipykernel", specifier = ">=7.0.0" },
     { name = "ipython", marker = "extra == 'dev'" },
     { name = "matplotlib", specifier = "==3.10.5" },

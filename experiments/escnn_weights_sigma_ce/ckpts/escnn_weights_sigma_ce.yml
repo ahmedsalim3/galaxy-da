@@ -1,0 +1,51 @@
+config_file_path: configs/escnn/trainable_weights_sigma.yml
+data:
+  batch_size: 64
+  image_size:
+  - 100
+  - 100
+  include_rotations: false
+  num_workers: 4
+  shared_norm: false
+  source_img_dir: data/source/galaxy_images_rgb
+  source_labels: data/source/source_galaxy_labels.csv
+  target_img_dir: data/target/gz2_images
+  target_labels: data/target/gz2_galaxy_labels.csv
+  val_size: 0.2
+experiment_name: escnn_weights_sigma_ce
+model:
+  N: 8
+  base_width: 24
+  dropout: 0.5
+  group: D8
+  type: escnn
+output:
+  root_dir: experiments
+seed: 42
+training:
+  criterion: cross_entropy
+  early_stopping_metric: f1
+  early_stopping_patience: 25
+  eta_1_init: 0.1
+  eta_2_init: 1.0
+  lambda_da: 0.1
+  lr: 3e-4
+  max_norm: 10.0
+  method: sinkhorn
+  num_epochs: 150
+  optimizer: adamw
+  sigma_decay_rate: 0.95
+  sigma_final_blur: 1.0
+  sigma_initial_blur: 10.0
+  sigma_min_blur: 0.01
+  sigma_poly_power: 2.0
+  sigma_schedule_type: exponential
+  sigma_step_gamma: 0.5
+  sigma_step_size: 2
+  sinkhorn_blur: 10.0
+  sinkhorn_p: 2
+  use_class_weights: true
+  use_sigma_schedule: true
+  use_trainable_weights: true
+  warmup_epochs: 5
+  weight_decay: 1e-2

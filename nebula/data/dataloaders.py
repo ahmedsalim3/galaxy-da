@@ -2,12 +2,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from torch.utils.data import DataLoader
+import torch
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import transforms
 
-from nebula.data.dataset import (GalaxyDatasetSource, GalaxyDatasetTarget,
-                                 split_dataset)
+from nebula.commons.logger import Logger
+from nebula.data.dataset import (CLASSES, GalaxyDatasetSource,
+                                 GalaxyDatasetTarget, split_dataset)
 from nebula.data.normalization import compute_dataset_stats
+
+logger = Logger()
 
 
 @dataclass
@@ -29,6 +33,10 @@ class GalaxyDataModule:
     val_size: float = 0.2
     num_workers: int = 4
     seed: int = 42
+    use_sampler: bool = False
+    sampler_smoothing: float = 0.0
+    sampler_power: float = 1.0
+    sampler_replacement: bool = True
 
     src_dataset: GalaxyDatasetSource = field(init=False)
     tgt_dataset: Optional[GalaxyDatasetTarget] = field(init=False, default=None)
@@ -132,24 +140,77 @@ class GalaxyDataModule:
         self.train_src, self.val_src = split_dataset(
             self.src_dataset,
             val_size=self.val_size,
-            train_transform=self.src_transform,
-            val_transform=self.src_transform,
             seed=self.seed,
         )
         if getattr(self, "tgt_dataset", None) is not None:
             self.train_tgt, self.val_tgt = split_dataset(
                 self.tgt_dataset,
                 val_size=self.val_size,
-                train_transform=self.tgt_transform,
-                val_transform=self.tgt_transform,
                 seed=self.seed,
             )
 
     def _create_dataloaders(self):
+        if self.use_sampler:
+            logger.debug("Using WeightedRandomSampler for source training data:")
+
+            all_labels = self.train_src.dataset.labels_tensor
+            train_indices = self.train_src.indices
+            labels = all_labels[train_indices]
+            # ========================
+
+            num_classes = int(labels.max().item()) + 1
+            class_sample_count = torch.tensor(
+                [(labels == i).sum().item() for i in range(num_classes)]
+            )
+
+            # Compute weights based on smoothing and power settings
+            # - smoothing=0, power=1.0: old behavior (1.0 / count)
+            # - smoothing=0, power!=1.0: use power without smoothing (1.0 / count ** power)
+            # - smoothing>0: use both smoothing and power (1.0 / (count + smoothing) ** power)
+            if self.sampler_smoothing > 0:
+                # With smoothing: prevents extreme weights for very small classes
+                smoothed_counts = class_sample_count.float() + self.sampler_smoothing
+                weights = 1.0 / (smoothed_counts**self.sampler_power)
+                logger.debug(
+                    f" - Sampler config: smoothing={self.sampler_smoothing}, power={self.sampler_power}"
+                )
+            elif self.sampler_power != 1.0:
+                weights = 1.0 / (class_sample_count.float() ** self.sampler_power)
+                logger.debug(f" - Sampler config: power={self.sampler_power}")
+            else:
+                # simple inverse frequency (smoothing=0, power=1.0)
+                weights = 1.0 / class_sample_count.float()
+
+            sample_weights = weights[labels]
+
+            # Log class distribution and weights
+            logger.debug(f" - Total training samples: {len(labels)}")
+
+            for i in range(num_classes):
+                class_name = CLASSES[i] if i < len(CLASSES) else f"class_{i}"
+                count = class_sample_count[i].item()
+                weight = weights[i].item()
+                logger.debug(f"  {class_name}: {count} samples, weight: {weight:.6f}")
+
+            sampler = WeightedRandomSampler(
+                weights=sample_weights,
+                num_samples=len(sample_weights),
+                replacement=self.sampler_replacement,
+            )
+            logger.debug(
+                f"Created WeightedRandomSampler with {len(sample_weights)} samples, replacement={self.sampler_replacement}"
+            )
+            shuffle = False
+        else:
+            sampler = None
+            shuffle = True
+            logger.debug("Using standard DataLoader with shuffle=True (no sampler)")
+
         self.source_train_loader = DataLoader(
             self.train_src,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=shuffle,
+            sampler=sampler,
             num_workers=self.num_workers,
         )
         self.source_test_loader = DataLoader(
@@ -180,6 +241,7 @@ if __name__ == "__main__":
         source_labels=Path("data/source/source_galaxy_labels.csv"),
         target_img_dir=Path("data/target/gz2_images"),
         target_labels=Path("data/target/gz2_galaxy_labels.csv"),
+        use_sampler=True,
     )
 
     train_loader = module.source_train_loader

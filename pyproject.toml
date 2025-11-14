@@ -5,7 +5,7 @@ readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
-    "geomloss>=0.2.6",
+    "geomloss @ file:///${PROJECT_ROOT}/geomloss",
     "matplotlib==3.10.5",
     "numpy==1.26.4",
     "pandas==2.2.2",
