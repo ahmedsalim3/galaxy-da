@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -170,20 +170,15 @@ class TopKPairwiseLoss(nn.Module):
     * For dissimilar or outlying features, the minima are large and
       dominate the TopK loss.
 
-    The `exclude_diagonal` argument is retained for API compatibility
-    but is not used in this implementation.
-
     Args:
         k: number of largest row-minimum distances to average.  If
            `k <= 0`, the loss returns zero.  If `k` exceeds the number of
            rows, all row minima are used.
-        exclude_diagonal: unused flag kept for backward compatibility.
     """
 
-    def __init__(self, k: int = 5, exclude_diagonal: bool = True) -> None:
+    def __init__(self, k: int = 5) -> None:
         super().__init__()
         self.k = int(k)
-        self.exclude_diagonal = exclude_diagonal
 
     def forward(self, src_feats: torch.Tensor, tgt_feats: torch.Tensor) -> torch.Tensor:
         if src_feats.ndim != 2 or tgt_feats.ndim != 2:
@@ -202,9 +197,6 @@ class TopKPairwiseLoss(nn.Module):
         # For identical or close feature sets, the per-row minima will be small,
         # leading to a small (or zero) TopK loss. For dissimilar sets, the
         # minima will be large. This metric is differentiable via autograd.
-        # We ignore the ``exclude_diagonal`` flag in this scheme because
-        # excluding the diagonal would cause identical sets to have non-zero
-        # minima, which contradicts the intended behavior.
         row_min = cost.min(dim=1).values  # (n_s,)
 
         # If no rows or k <= 0, return zero
@@ -266,13 +258,12 @@ class OTAlignmentLoss(nn.Module):
 def compute_hard_ot_cost(
     src_feats: torch.Tensor,
     tgt_feats: torch.Tensor,
-) -> Tuple[float, Optional[np.ndarray], Optional[np.ndarray]]:
+) -> Tuple[float, np.ndarray, np.ndarray]:
     """
     Compute mean hard-assignment OT cost using the Hungarian algorithm (non-differentiable).
 
     Returns:
         (mean_cost, row_ind, col_ind)
-        If SciPy is not available, returns (np.nan, None, None).
     """
     if src_feats.ndim != 2 or tgt_feats.ndim != 2:
         raise ValueError("Expected 2D tensors (batch, dim).")
