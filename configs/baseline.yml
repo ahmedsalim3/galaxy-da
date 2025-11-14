@@ -42,7 +42,7 @@ training:
   focal_reduction: "mean"
 
   early_stopping_patience: 10
-  early_stopping_metric: "train_loss"
+  early_stopping_metric: "f1"
 
 output:
   root_dir: "experiments"

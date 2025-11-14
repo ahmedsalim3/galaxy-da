@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 from geomloss import SamplesLoss
+from geomloss.distance_metrics import DISTANCE_METRICS
 
 from nebula.commons import Logger
 
@@ -16,15 +17,22 @@ class DomainAdaptationLoss:
         if method == "sinkhorn":
             # GeomLoss with Sinkhorn distance, p=2, blur ~ σ; tune as needed
             p = kwargs.get("p", 2)
-            blur = kwargs.get("blur", 10)
+            blur = kwargs.get("blur", 3)
             self.loss_fn = SamplesLoss("sinkhorn", p=p, blur=blur)
         elif method == "energy":
             # Energy distance (equivalent to Gaussian MMD with fixed bandwidth)
             p = kwargs.get("p", 2)
             self.loss_fn = SamplesLoss("energy", p=p)
         elif method == "mmd":
-            blur = kwargs.get("blur", 10)
+            blur = kwargs.get("blur", 3)
             self.loss_fn = SamplesLoss("gaussian", blur=blur)
+        elif method == "minkowski":
+            p = kwargs.get("p", 2)
+            blur = kwargs.get("blur", 3)
+            self.loss_fn = SamplesLoss("minkowski", p=p, blur=blur)
+        elif method in DISTANCE_METRICS:
+            blur = kwargs.get("blur", None)
+            self.loss_fn = SamplesLoss(method, blur=blur)
         elif method == "none":
             self.loss_fn = None
         else:
