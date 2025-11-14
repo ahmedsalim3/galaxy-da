@@ -14,10 +14,10 @@ data:
   target_labels: "data/target/gz2_galaxy_labels.csv" # This around 2568 images
   # target_labels: "data/target/gz2_galaxy_labels_master.csv" # around 6416 images
   # target_labels: "data/target/gz2_galaxy_labels_master.json" # around 20,000 images
-  source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
-  source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
-  target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]
-  target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]
+  #source_mean: [0.10848670452833176, 0.117486372590065, 0.09117863327264786]
+  #source_std:  [0.2009781301021576, 0.21104967594146729, 0.1836480051279068]
+  #target_mean: [0.04405268281698227, 0.03992829844355583, 0.032875481992959976]
+  #target_std: [0.0869700163602829, 0.0758928582072258, 0.07477222383022308]
   include_rotations: false
   shared_norm: false
   image_size: [28, 28]
@@ -46,7 +46,7 @@ training:
   focal_reduction: "mean"
 
   early_stopping_patience: 10
-  early_stopping_metric: "train_loss" # set for "f1" , or "accuracy" in DA, or "train_loss", ce_loss", "da_loss"
+  early_stopping_metric: "f1" # set for "f1" , or "accuracy" in DA, or "train_loss", ce_loss", "da_loss"
   
   # --- DA Loss Specific ---
   sinkhorn_blur: 10.0 # Fixed blur
