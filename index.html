@@ -305,6 +305,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#data" class="md-nav__link">
+    Data
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#about" class="md-nav__link">
     About
   </a>
@@ -353,6 +360,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#data" class="md-nav__link">
+    Data
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#about" class="md-nav__link">
     About
   </a>
@@ -382,6 +396,8 @@
 <h2 id="abstract">Abstract</h2>
 <p>Large photometric surveys will image billions of galaxies, but we currently lack quick, reliable automated ways to infer their physical properties like morphology, stellar mass, and star formation rates. Simulations provide galaxy images with ground-truth physical labels, but domain shifts in PSF, noise, backgrounds, selection, and label priors degrade transfer to real surveys. We present a preliminary domain adaptation pipeline that trains on simulated TNG50 galaxies and evaluates on real SDSS galaxies with morphology labels (elliptical/spiral/irregular). We train three backbones (CNN, <span class="arithmatex">\(E(2)\)</span>-steerable CNN, ResNet-18) with focal loss and effective-number class weighting, and a feature-level domain loss <span class="arithmatex">\(\mathcal{L}_D\)</span> built from GeomLoss (entropic Sinkhorn OT, energy distance, Gaussian MMD, and related metrics). We show that a combination of these losses with an OT-based "top-<span class="arithmatex">\(k\)</span> soft matching" loss that focuses <span class="arithmatex">\(\mathcal{L}_D\)</span> on the worst-matched source–target pairs can further enhance domain alignment. With Euclidean distance, scheduled alignment weights, and top-<span class="arithmatex">\(k\)</span> matching, target accuracy rises from ~61% (no adaptation) to ~86–89%, with a ~17-point gain in macro–F1 and a domain AUC near 0.5, indicating strong latent-space mixing.</p>
 <hr />
+<h2 id="data">Data</h2>
+<p>To access the datasets used in this project, please refer to the <a href="https://zenodo.org/records/17434016">Zenodo dataset repository</a>. The dataset includes RGB galaxy images and labels for both source (IllustrisTNG) and target (SDSS, Galaxy Zoo 2) domains.</p>
 <h2 id="about">About</h2>
 <p>This project was made possible through the <a href="https://github.com/iaifi/summer-school-2025">2025 IAIFI Summer School</a> provided by The <a href="https://iaifi.org/">NSF AI</a> Institute for Artificial Intelligence and Fundamental Interactions (IAIFI). This work was presented at the Machine Learning and the Physical Sciences Workshop @ <a href="https://neurips.cc/">NeurIPS 2025</a></p>
 
