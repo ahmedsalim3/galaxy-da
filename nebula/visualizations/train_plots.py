@@ -74,6 +74,7 @@ def plot_training_summary(
     lambda_grl = prepare_data(history, "lambda_grl", epochs)
     source_acc = prepare_data(history, "source_acc", epochs)
     target_acc = prepare_data(history, "target_acc", epochs)
+    target_f1 = prepare_data(history, "target_f1", epochs)
 
     # Check what we have
     has_align = align_loss.size > 0 and not np.all(np.isnan(align_loss)) and not np.all(align_loss == 0)
@@ -210,7 +211,29 @@ def plot_training_summary(
     ax_acc.set_ylabel("Accuracy (%)", fontweight="bold")
     ax_acc.set_title("Classification Accuracy", pad=15, fontsize=14, fontweight="bold")
     ax_acc.set_ylim([0, 105])
-    add_legend(ax_acc, loc="lower right")
+    
+    # Add F1 score on twin axis if available
+    has_f1 = target_f1.size > 0 and not np.all(np.isnan(target_f1)) and not np.all(target_f1 == 0)
+    if has_f1:
+        ax_f1 = ax_acc.twinx()
+        ax_f1.spines["right"].set_visible(True)
+        ax_f1.spines["right"].set_edgecolor("#AAAAAA")
+        ax_f1.spines["right"].set_linewidth(1.2)
+        ax_f1.plot(
+            epochs, target_f1,
+            label=r"$\text{F1}_T$",
+            color=COLORS["target_f1"],
+            linewidth=2.5,
+            marker="^",
+            markersize=4,
+            markevery=max(1, len(epochs) // 15),
+            linestyle="--",
+        )
+        ax_f1.set_ylabel("F1 Score", fontweight="bold")
+        ax_f1.set_ylim([0, 1.05])
+        add_legend(ax_acc, ax_f1, loc="lower right")
+    else:
+        add_legend(ax_acc, loc="lower right")
 
     # ========== SUBPLOT 4: Trainable Parameters ==========
     if has_eta1 or has_eta2 or has_sigma or has_lambda_grl:
@@ -528,6 +551,7 @@ def plot_accuracy_curves(
     # Prepare data
     source_acc = prepare_data(history, "source_acc", epochs)
     target_acc = prepare_data(history, "target_acc", epochs)
+    target_f1 = prepare_data(history, "target_f1", epochs)
 
     add_warmup_region(ax, warmup_epochs, epochs)
 
@@ -564,8 +588,29 @@ def plot_accuracy_curves(
     ax.set_ylabel("Accuracy (%)", fontweight="bold")
     ax.set_title("Training Accuracy", pad=15)
     ax.set_ylim([0, 105])
-
-    add_legend(ax, loc="lower right")
+    
+    # Add F1 score on twin axis if available
+    has_f1 = target_f1.size > 0 and not np.all(np.isnan(target_f1)) and not np.all(target_f1 == 0)
+    if has_f1:
+        ax_f1 = ax.twinx()
+        ax_f1.spines["right"].set_visible(True)
+        ax_f1.spines["right"].set_edgecolor("#AAAAAA")
+        ax_f1.spines["right"].set_linewidth(1.2)
+        ax_f1.plot(
+            epochs, target_f1,
+            label=r"$\text{F1}_T$",
+            color=COLORS["target_f1"],
+            linewidth=2.5,
+            marker="^",
+            markersize=4,
+            markevery=max(1, len(epochs) // 15),
+            linestyle="--",
+        )
+        ax_f1.set_ylabel("F1 Score", fontweight="bold")
+        ax_f1.set_ylim([0, 1.05])
+        add_legend(ax, ax_f1, loc="lower right")
+    else:
+        add_legend(ax, loc="lower right")
 
     plt.tight_layout()
 

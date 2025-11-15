@@ -1,4 +1,4 @@
-experiment_name: "euclidean_fixed_lambda_resnet"
+experiment_name: "euclidean_fixed_lambda_scheduler_sigma"
 seed: 42
 
 data:
@@ -38,13 +38,24 @@ training:
 
   # --- DA Loss Specific ---
   lambda_da: 0.1
+  
   sinkhorn_blur: 10.0
   sinkhorn_p: 2
-  use_trainable_weights: false
-  use_sigma_schedule: false
+  
+  use_trainable_weights: true
+  eta_1_init: 0.1
+  eta_2_init: 1.0
+  
+  use_sigma_schedule: true
+  sigma_schedule_type: "exponential"
+  sigma_initial_blur: 10.0
+  sigma_final_blur: 1.0
+  sigma_min_blur: 0.1
+  sigma_decay_rate: 0.95
+
+  lambda_entropy: 0.02
 
   lambda_ot: 0.5
-  
   ot_lambda_ot: 0.3
   ot_lambda_match: 0.6
   ot_lambda_topk: 0.1

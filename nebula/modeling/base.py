@@ -46,6 +46,7 @@ class BaseTrainer:
             "da_loss": [],
             "source_acc": [],
             "target_acc": [],
+            "target_f1": [],
         }
         self.diag_history = {
             "mmd2": [],
@@ -635,6 +636,12 @@ class BaseTrainer:
             custom_metrics = self.get_epoch_metrics(epoch, is_warmup)
             metrics.update(custom_metrics)
 
+            if target_loader is not None:
+                target_f1 = eval_f1_score(self.model, target_loader, self.device)
+                metrics["target_f1"] = target_f1
+            else:
+                metrics["target_f1"] = None
+
             # current epoch number (for padding new metrics)
             current_epoch_num = len(self.history.get("train_loss", []))
 
@@ -678,11 +685,10 @@ class BaseTrainer:
                 loss_parts.append(f"Ent={fmt(metrics['entropy_loss'])}")
             logger.info("  ".join(loss_parts))
 
-            # Line 2: Accuracies
-            logger.info(
-                f"          SAcc={metrics['source_acc']:.2f}%, "
-                f"TAcc={metrics['target_acc']:.2f}%"
-            )
+            acc_line = f"          SAcc={metrics['source_acc']:.2f}%, TAcc={metrics['target_acc']:.2f}%"
+            if metrics.get('target_f1') is not None:
+                acc_line += f", TF1={metrics['target_f1']:.4f}"
+            logger.info(acc_line)
 
             # Line 3: Extra metrics (eta, lambda_grl, sigma)
             extra = []

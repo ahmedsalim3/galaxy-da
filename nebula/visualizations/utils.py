@@ -37,6 +37,7 @@ COLORS = {
     "entropy_loss": "#b48ead",
     "source_acc": "#2e3440",
     "target_acc": "#bf616a",
+    "target_f1": "#5e81ac",
     "eta1": "#88c0d0",
     "eta2": "#a64d79",
     "sigma": "#d08770",

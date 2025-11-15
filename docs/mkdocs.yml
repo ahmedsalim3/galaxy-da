@@ -1,20 +1,44 @@
-site_name: Nebula
-site_description: Domain Adaptation in Galaxy Morphology
+site_name: From Simulations to Surveys
+site_description: Domain Adaptation for Galaxy Observations
 site_author: Ahmed Salim
-site_url: https://ahmedsalim.github.io/iaifi-hackathon-2025
+site_url: https://ahmedsalim.github.io/galaxy-da
 
-repo_url: https://github.com/ahmedsalim3/iaifi-hackathon-2025
+repo_url: https://github.com/ahmedsalim3/galaxy-da
 edit_uri: edit/main/docs/docs/
 
-copyright: Copyright &copy; 2025 Ahmed Salim
+copyright: Copyright &copy; 2025
 
 theme:
-  name: readthedocs
-  language: en
+  name: material
+  palette:
+    - scheme: default
+      primary: white
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features: []
 
 docs_dir: docs
 
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+
+plugins:
+  - search:
+      enabled: false
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Datasets: datasets.md

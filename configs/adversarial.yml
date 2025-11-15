@@ -1,4 +1,4 @@
-experiment_name: baseline
+experiment_name: "adversarial"
 seed: 42
 
 data:
@@ -6,6 +6,7 @@ data:
   source_labels: "data/source/source_galaxy_labels.csv"
   target_img_dir: "data/target/gz2_images"
   target_labels: "data/target/gz2_galaxy_labels.csv"
+
   include_rotations: false
   shared_norm: false
   image_size: [224, 224]
@@ -17,23 +18,43 @@ model:
   type: "resnet"
 
 training:
-  method: "baseline"
-
   class_weight_beta: 0.9999
   class_weight_method: "effective"
   criterion: "focal"
+  domain_hidden_dim: 256
+  domain_projection_dim: 128
   early_stopping_metric: "train_loss"
-  early_stopping_patience: 10
-  focal_alpha: null
+  early_stopping_patience: 8
+  focal_alpha: "class_weights"
   focal_gamma: 2.0
   focal_reduction: "mean"
-  lr: 3e-4
+  lambda_entropy: 0.02
+  lambda_grl: 0.4
+  lambda_grl_schedule:
+    end: 0.4
+    start: 0.0
+    type: "sigmoid"
+  lambda_ot: 0.5
+  lr: 0.0001
+  lr_scheduler: "cosine"
+  match_epsilon: 0.05
+  match_n_iter: 20
   max_norm: 10.0
-  num_epochs: 50
+  method: "adversarial"
+  min_lr: 1.0e-06
+  num_epochs: 200
   optimizer: "adamw"
+  ot_epsilon: 0.05
+  ot_lambda_match: 0.6
+  ot_lambda_ot: 0.3
+  ot_lambda_topk: 0.1
+  ot_n_iter: 50
+  ot_topk: 5
   use_class_weights: true
-  warmup_epochs: 0
-  weight_decay: 1e-2
+  use_projection: true
+  warmup_epochs: 20
+  weight_decay: 0.01
+
 
 output:
   root_dir: "paper_experiments"
