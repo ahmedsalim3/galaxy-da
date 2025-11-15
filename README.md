@@ -41,6 +41,10 @@ source .venv/bin/activate # On mac/linux distros
 pip install -e .
 ```
 
+## Data
+
+To access the datasets used in this project, please refer to the [Zenodo dataset repository](https://zenodo.org/records/17434016). The dataset includes RGB galaxy images and labels for both source (IllustrisTNG) and target (SDSS, Galaxy Zoo 2) domains.
+
 ## How to train?
 
 1. Create a config file, see [template](./configs/config.template.yml) and run with 
