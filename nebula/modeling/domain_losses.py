@@ -13,25 +13,34 @@ logger = Logger()
 class DomainAdaptationLoss:
     def __init__(self, method: str = "sinkhorn", **kwargs):
         self.method = method
+        self._p = kwargs.get("p", None)
+        self._blur = kwargs.get("blur", None)
 
         if method == "sinkhorn":
             # GeomLoss with Sinkhorn distance, p=2, blur ~ σ; tune as needed
             p = kwargs.get("p", 2)
             blur = kwargs.get("blur", 3)
+            self._p = p
+            self._blur = blur
             self.loss_fn = SamplesLoss("sinkhorn", p=p, blur=blur)
         elif method == "energy":
             # Energy distance (equivalent to Gaussian MMD with fixed bandwidth)
             p = kwargs.get("p", 2)
+            self._p = p
             self.loss_fn = SamplesLoss("energy", p=p)
         elif method == "mmd":
             blur = kwargs.get("blur", 3)
+            self._blur = blur
             self.loss_fn = SamplesLoss("gaussian", blur=blur)
         elif method == "minkowski":
             p = kwargs.get("p", 2)
             blur = kwargs.get("blur", 3)
+            self._p = p
+            self._blur = blur
             self.loss_fn = SamplesLoss("minkowski", p=p, blur=blur)
         elif method in DISTANCE_METRICS:
             blur = kwargs.get("blur", None)
+            self._blur = blur
             self.loss_fn = SamplesLoss(method, blur=blur)
         elif method == "none":
             self.loss_fn = None
@@ -55,20 +64,26 @@ class DomainAdaptationLoss:
 
     def update_blur(self, blur: float, min_blur: float = 1e-2):
         """
-        Update the blur parameter for Sinkhorn/MMD loss.
+        Update the blur parameter for methods that support it.
 
         Args:
             blur: New blur value (will be clamped to >= min_blur)
             min_blur: Minimum blur to prevent numerical instability
         """
-        if self.method in ["sinkhorn", "mmd"]:
-            clamped_blur = max(blur, min_blur)
+        clamped_blur = max(blur, min_blur)
+        self._blur = clamped_blur
 
-            p = 2 if self.method == "sinkhorn" else None
-            if self.method == "sinkhorn":
-                self.loss_fn = SamplesLoss("sinkhorn", p=p, blur=clamped_blur)
-            else:
-                self.loss_fn = SamplesLoss("gaussian", blur=clamped_blur)
+        if self.method == "sinkhorn":
+            p = self._p if self._p is not None else 2
+            self.loss_fn = SamplesLoss("sinkhorn", p=p, blur=clamped_blur)
+        elif self.method == "mmd":
+            self.loss_fn = SamplesLoss("gaussian", blur=clamped_blur)
+        elif self.method == "minkowski":
+            p = self._p if self._p is not None else 2
+            self.loss_fn = SamplesLoss("minkowski", p=p, blur=clamped_blur)
+        elif self.method in DISTANCE_METRICS:
+            # for distance metrics like "euclidean", recreate with updated blur
+            self.loss_fn = SamplesLoss(self.method, blur=clamped_blur)
 
 
 class TrainableLossWeights(nn.Module):

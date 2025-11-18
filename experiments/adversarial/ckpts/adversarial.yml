@@ -1,4 +1,4 @@
-config_file_path: configs/euclidean/adversarial.yml
+config_file_path: configs/adversarial.yml
 data:
   batch_size: 128
   image_size:
@@ -35,9 +35,13 @@ data:
   val_size: 0.2
 experiment_name: adversarial
 model:
+  arch: resnet18
+  dropout: 0.3
+  pretrained: true
+  trainable_layers: 2
   type: resnet
 output:
-  root_dir: paper_experiments
+  root_dir: final_experiments
 seed: 42
 training:
   class_weight_beta: 0.9999
@@ -46,7 +50,7 @@ training:
   domain_hidden_dim: 256
   domain_projection_dim: 128
   early_stopping_metric: train_loss
-  early_stopping_patience: 8
+  early_stopping_patience: 10
   focal_alpha: class_weights
   focal_gamma: 2.0
   focal_reduction: mean

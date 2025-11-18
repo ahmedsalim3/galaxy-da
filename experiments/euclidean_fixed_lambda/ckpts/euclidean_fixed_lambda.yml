@@ -1,0 +1,77 @@
+config_file_path: configs/euclidean_fixed_lambda.yml
+data:
+  batch_size: 128
+  image_size:
+  - 224
+  - 224
+  include_rotations: false
+  num_workers: 4
+  sampler_power: 1.0
+  sampler_replacement: true
+  sampler_smoothing: 0.0
+  seed: 42
+  shared_norm: false
+  source_img_dir: data/source/galaxy_images_rgb
+  source_labels: data/source/source_galaxy_labels.csv
+  source_mean:
+  - 0.10894180834293365
+  - 0.11795622110366821
+  - 0.09158393740653992
+  source_std:
+  - 0.20096200704574585
+  - 0.21104204654693604
+  - 0.18359588086605072
+  target_img_dir: data/target/gz2_images
+  target_labels: data/target/gz2_galaxy_labels.csv
+  target_mean:
+  - 0.044042717665433884
+  - 0.03992113098502159
+  - 0.032825369387865067
+  target_std:
+  - 0.08624161034822464
+  - 0.07512214034795761
+  - 0.07406311482191086
+  use_sampler: false
+  val_size: 0.2
+experiment_name: euclidean_fixed_lambda
+model:
+  arch: resnet18
+  dropout: 0.3
+  pretrained: true
+  trainable_layers: 2
+  type: resnet
+output:
+  root_dir: final_experiments
+seed: 42
+training:
+  class_weight_beta: 0.9999
+  class_weight_method: effective
+  criterion: focal
+  early_stopping_metric: train_loss
+  early_stopping_patience: 10
+  focal_alpha: class_weights
+  focal_gamma: 2.0
+  focal_reduction: mean
+  lambda_da: 0.1
+  lambda_entropy: 0.02
+  lambda_ot: 0.5
+  lr: 0.0001
+  lr_scheduler: cosine
+  match_epsilon: 0.05
+  match_n_iter: 20
+  max_norm: 10.0
+  method: euclidean
+  min_lr: 1.0e-06
+  num_epochs: 200
+  optimizer: adamw
+  ot_epsilon: 0.05
+  ot_lambda_match: 0.6
+  ot_lambda_ot: 0.3
+  ot_lambda_topk: 0.1
+  ot_n_iter: 50
+  ot_topk: 5
+  sinkhorn_blur: 10.0
+  sinkhorn_p: 2
+  use_class_weights: true
+  warmup_epochs: 20
+  weight_decay: 0.01

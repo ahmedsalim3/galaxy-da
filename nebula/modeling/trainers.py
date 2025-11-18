@@ -92,6 +92,8 @@ class DAFixedLambdaTrainer(BaseTrainer):
             loss_dict["entropy_loss"] = entropy_loss
         if self.ot_da_loss is not None:
             loss_dict["align_loss"] = align_loss
+            ot_components = self.ot_da_loss.get_component_losses()
+            loss_dict.update(ot_components)
 
         return total_loss, loss_dict
 
@@ -150,6 +152,8 @@ class DATrainableWeightsTrainer(DAFixedLambdaTrainer):
             loss_dict["entropy_loss"] = entropy_loss
         if self.ot_da_loss is not None:
             loss_dict["align_loss"] = align_loss
+            ot_components = self.ot_da_loss.get_component_losses()
+            loss_dict.update(ot_components)
 
         return total_loss, loss_dict
 
@@ -331,6 +335,8 @@ class DAAdversarialTrainer(BaseTrainer):
             loss_dict["entropy_loss"] = entropy_loss
         if self.ot_da_loss is not None:
             loss_dict["align_loss"] = align_loss
+            ot_components = self.ot_da_loss.get_component_losses()
+            loss_dict.update(ot_components)
 
         return total_loss, loss_dict
 

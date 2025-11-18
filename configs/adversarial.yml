@@ -2,59 +2,84 @@ experiment_name: "adversarial"
 seed: 42
 
 data:
-  source_img_dir: "data/source/galaxy_images_rgb"
-  source_labels: "data/source/source_galaxy_labels.csv"
-  target_img_dir: "data/target/gz2_images"
-  target_labels: "data/target/gz2_galaxy_labels.csv"
-
-  include_rotations: false
-  shared_norm: false
-  image_size: [224, 224]
-  batch_size: 128
-  val_size: 0.2
-  num_workers: 4
+  source_img_dir: "data/source/galaxy_images_rgb" # path to source images
+  source_labels: "data/source/source_galaxy_labels.csv" # path to source labels
+  target_img_dir: "data/target/gz2_images" # path to target images
+  target_labels: "data/target/gz2_galaxy_labels.csv" # path to target labels
+  include_rotations: false # whether to include rotated images
+  shared_norm: false # whether to use shared normalization
+  use_sampler: false # whether to use a sampler for data loading
+  image_size: [224, 224] # size of input images
+  batch_size: 128 # batch size for training
+  val_size: 0.2 # proportion of validation data
+  num_workers: 4 # number of workers for data loading
 
 model:
-  type: "resnet"
+  type: "resnet" # model type
+  arch: "resnet18" # model architecture
+  pretrained: true # use pretrained weights
+  trainable_layers: 2 # number of trainable layers
+  dropout: 0.3 # dropout rate
+
 
 training:
-  class_weight_beta: 0.9999
-  class_weight_method: "effective"
-  criterion: "focal"
-  domain_hidden_dim: 256
-  domain_projection_dim: 128
-  early_stopping_metric: "train_loss"
-  early_stopping_patience: 8
-  focal_alpha: "class_weights"
-  focal_gamma: 2.0
-  focal_reduction: "mean"
-  lambda_entropy: 0.02
-  lambda_grl: 0.4
-  lambda_grl_schedule:
-    end: 0.4
-    start: 0.0
-    type: "sigmoid"
-  lambda_ot: 0.5
-  lr: 0.0001
-  lr_scheduler: "cosine"
-  match_epsilon: 0.05
-  match_n_iter: 20
-  max_norm: 10.0
-  method: "adversarial"
-  min_lr: 1.0e-06
-  num_epochs: 200
-  optimizer: "adamw"
-  ot_epsilon: 0.05
-  ot_lambda_match: 0.6
-  ot_lambda_ot: 0.3
-  ot_lambda_topk: 0.1
-  ot_n_iter: 50
-  ot_topk: 5
-  use_class_weights: true
-  use_projection: true
-  warmup_epochs: 20
-  weight_decay: 0.01
+  method: "adversarial" # domain adaptation method
+  num_epochs: 200 # number of training epochs
+  warmup_epochs: 20 # number of warmup epochs
+  lr: 1e-4 # learning rate
+  optimizer: "adamw" # optimizer type
+  weight_decay: 1e-2 # weight decay for optimizer
+  max_norm: 10.0 # max norm for gradient clipping
+  lr_scheduler: "cosine" # learning rate scheduler type
+  min_lr: 1e-6 # minimum learning rate
 
+
+  # Loss function
+  criterion: "focal" # loss function type
+  use_class_weights: true # whether to use class weights
+  class_weight_method: "effective" # method for computing class weights
+  class_weight_beta: 0.9999 # beta parameter for effective number of samples
+  focal_gamma: 2.0 # gamma parameter for focal loss
+  focal_alpha: "class_weights" # alpha parameter for focal loss
+  focal_reduction: "mean" # reduction method for focal loss
+  
+  # Early stopping
+  early_stopping_metric: "train_loss" # metric for early stopping
+  early_stopping_patience: 10 # patience for early stopping
+
+  # entropy minimization
+  lambda_entropy: 0.02 # weight for entropy minimization
+
+  # DANN Settings
+  lambda_grl: 0.4 # fixed maximum weight for GRL loss (we are using schedule instead)
+  lambda_grl_schedule:
+    end: 0.4 # final value of lambda_grl
+    start: 0.0 # initial value of lambda_grl
+    type: "sigmoid" # schedule type for lambda_grl
+  domain_hidden_dim: 256 # hidden dimension for domain classifier
+  domain_projection_dim: 128 # projection dimension for domain classifier
+  use_projection: true # whether to use projection in domain classifier
+
+  
+  
+  # ========================================
+  # OT Alignment Loss (OTAlignmentLoss)
+  # ========================================
+  lambda_ot: 0.5 # weight for OT alignment loss
+  
+  ot_lambda_ot: 0.3  # weight for sinkhorn OT distance
+  ot_lambda_match: 0.6  # weight for matched-pair alignment (most important)
+  ot_lambda_topk: 0.1  # weight for top-k worst pairs penalty
+  
+  # sinkhorn algorithm parameters
+  ot_epsilon: 0.05  # regularization
+  ot_n_iter: 50  # sinkhorn iterations
+  
+  # matching algorithm parameters
+  match_epsilon: 0.05  # regularization
+  match_n_iter: 20  # matching iterations
+  ot_topk: 5  # number of worst pairs to penalize
+  
 
 output:
-  root_dir: "paper_experiments"
+  root_dir: "experiments"
