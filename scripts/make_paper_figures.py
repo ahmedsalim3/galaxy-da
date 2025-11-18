@@ -1447,16 +1447,38 @@ if __name__ == "__main__":
     set_style()
     experiments = _load_data(args.exp_dir, full_z=True)
     output_dir = args.output
-    if args.fig is None or args.fig == 1:
-        _plot_figure1(output_dir)
-    if args.fig is None or args.fig == 2:
-        _plot_figure2(experiments, output_dir)
-    if args.fig is None or args.fig == 3:
-        _plot_figure3(experiments, output_dir)
-    if args.fig is None or args.fig == 4:
-        _plot_figure4(experiments, output_dir)
-    if args.fig is None or args.fig == 5:
-        _plot_figure5(experiments, output_dir)
-    if args.fig is None or args.fig == 6:
-        _plot_figure6(experiments, output_dir)
-    _write_summary(args.exp_dir, experiments)
+    try:
+        if args.fig is None or args.fig == 1:
+            _plot_figure1(output_dir)
+    except Exception as e:
+        logger.error(f"Error plotting figure 1: {e}")
+    try:
+        if args.fig is None or args.fig == 2:
+            _plot_figure2(experiments, output_dir)
+    except Exception as e:
+        logger.error(f"Error plotting figure 2: {e}")
+    
+    try:
+        if args.fig is None or args.fig == 3:
+            _plot_figure3(experiments, output_dir)
+    except Exception as e:
+        logger.error(f"Error plotting figure 3: {e}")
+    try:
+        if args.fig is None or args.fig == 4:
+            _plot_figure4(experiments, output_dir)
+    except Exception as e:
+        logger.error(f"Error plotting figure 4: {e}")
+    try:
+        if args.fig is None or args.fig == 5:
+            _plot_figure5(experiments, output_dir)
+    except Exception as e:
+        logger.error(f"Error plotting figure 5: {e}")
+    try:
+        if args.fig is None or args.fig == 6:
+            _plot_figure6(experiments, output_dir)
+    except Exception as e:
+        logger.error(f"Error plotting figure 6: {e}")
+    try:
+        _write_summary(args.exp_dir, experiments)
+    except Exception as e:
+        logger.error(f"Error writing summary: {e}")

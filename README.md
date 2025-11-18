@@ -40,6 +40,7 @@ source .venv/bin/activate # On mac/linux distros
 - Install `nebula`
 
 ```sh
+git submodule update --init --recursive
 pip install -e .
 ```
 

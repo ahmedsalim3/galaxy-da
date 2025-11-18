@@ -1,7 +1,9 @@
 install:
+	git submodule update --init --recursive
 	uv sync --all-extras
 
 install-dev:
+	git submodule update --init --recursive
 	uv sync --all-extras
 	uv run pre-commit install
 
