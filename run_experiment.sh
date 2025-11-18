@@ -45,8 +45,8 @@ for CONFIG_PATH in $CONFIGS; do
 
     [ -f "$CKPT_PATH" ] || { echo "Error: Checkpoint not found at $CKPT_PATH"; continue; }
 
-    # OT-based methods (sinkhorn, mmd, energy) work better with UMAP
-    if [[ "$METHOD" == "sinkhorn" ]] || [[ "$METHOD" == "mmd" ]] || [[ "$METHOD" == "energy" ]]; then
+    # OT-based methods (sinkhorn, mmd, energy, euclidean) work better with UMAP
+    if [ "$METHOD" = "sinkhorn" ] || [ "$METHOD" = "mmd" ] || [ "$METHOD" = "energy" ] || [ "$METHOD" = "euclidean" ]; then
         EMBED_METHOD="umap"
     else
         EMBED_METHOD="tsne"
