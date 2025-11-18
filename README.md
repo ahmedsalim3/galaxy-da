@@ -8,7 +8,9 @@ Domain Adaptation for Galaxy Morphology Classification using llustrisTNG and Gal
 
 Large photometric surveys will image billions of galaxies, but we currently lack quick, reliable automated ways to infer their physical properties like morphology, stellar mass, and star formation rates. Simulations provide galaxy images with ground-truth physical labels, but domain shifts in PSF, noise, backgrounds, selection, and label priors degrade transfer to real surveys. We present a preliminary domain adaptation pipeline that trains on simulated TNG50 galaxies and evaluates on real SDSS galaxies with morphology labels (elliptical/spiral/irregular). We train three backbones (CNN, $E(2)$-steerable CNN, ResNet-18) with focal loss and effective-number class weighting, and a feature-level domain loss $\mathcal{L}_D$ built from [GeomLoss](./geomloss/) (entropic Sinkhorn OT, energy distance, Gaussian MMD, and related metrics). We show that a combination of these losses with an OT-based “top-$k$ soft matching’’ loss that focuses $\mathcal{L}_D$ on the worst-matched source–target pairs can further enhance domain alignment. With Euclidean distance, scheduled alignment weights, and top-$k$ matching, target accuracy rises from ~61% (no adaptation) to ~86–89%, with a ~17-point gain in macro–F1 and a domain AUC near 0.5, indicating strong latent-space mixing.
 
-![latent-space](./experiments/figures/figure-3.png)
+![latent-space](./paper-figures/figure3_latent_space.png)
+
+![cm-metrics](./paper-figures/figure4_cm_and_metrics.png)
 
 ## Prerequisites
 
@@ -68,7 +70,15 @@ You can also run train and evaluate simultaneously. Run this with a single confi
 
 ## Experiments
 
-The [experiments](./experiments/) directory contains the paper experiments. For other experiments, checkout to the [distance-metrics branch](https://github.com/ahmedsalim3/galaxy-da/tree/distancemetrics_branch) or [ot-alignment](https://github.com/ahmedsalim3/galaxy-da/tree/ot-alignment) branch:
+The [experiments](./experiments/README.md) directory contains the paper experiments. For other experiments, checkout to the [distance-metrics branch](https://github.com/ahmedsalim3/galaxy-da/tree/distancemetrics_branch) or [ot-alignment](https://github.com/ahmedsalim3/galaxy-da/tree/ot-alignment) branch:
+
+## Paper Figures
+
+The [paper-figures](./paper/paper-figures/) directory contains all the figures used in the paper. To reproduce the paper plots, run:
+
+```sh
+python3 scripts/make_paper_figures.py experiments
+```
 
 ## About This Project
 

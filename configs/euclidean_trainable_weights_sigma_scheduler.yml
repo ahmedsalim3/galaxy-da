@@ -1,0 +1,94 @@
+experiment_name: "euclidean_trainable_weights_sigma_scheduler"
+seed: 42
+
+data:
+  source_img_dir: "data/source/galaxy_images_rgb" # path to source images
+  source_labels: "data/source/source_galaxy_labels.csv" # path to source labels
+  target_img_dir: "data/target/gz2_images" # path to target images
+  target_labels: "data/target/gz2_galaxy_labels.csv" # path to target labels
+  include_rotations: false # whether to include rotated images
+  shared_norm: false # whether to use shared normalization
+  use_sampler: false # whether to use a sampler for data loading
+  image_size: [224, 224] # size of input images
+  batch_size: 128 # batch size for training
+  val_size: 0.2 # proportion of validation data
+  num_workers: 4 # number of workers for data loading
+
+model:
+  type: "resnet" # model type
+  arch: "resnet18" # model architecture
+  pretrained: true # use pretrained weights
+  trainable_layers: 2 # number of trainable layers
+  dropout: 0.3 # dropout rate
+
+
+training:
+  method: "euclidean" # domain adaptation method 
+  num_epochs: 200 # number of training epochs
+  warmup_epochs: 20 # number of warmup epochs
+  lr: 1e-4 # learning rate 
+  optimizer: "adamw" # optimizer type
+  weight_decay: 1e-2 # weight decay for optimizer
+  max_norm: 10.0 # max norm for gradient clipping
+  lr_scheduler: "cosine" # learning rate scheduler type
+  min_lr: 1e-6 # minimum learning rate
+  
+  # Loss function
+  criterion: "focal" # loss function type
+  use_class_weights: true # whether to use class weights
+  class_weight_method: "effective" # method for computing class weights
+  class_weight_beta: 0.9999 # beta parameter for effective number of samples
+  focal_gamma: 2.0 # gamma parameter for focal loss
+  focal_alpha: "class_weights" # alpha parameter for focal loss
+  focal_reduction: "mean" # reduction method for focal loss
+  
+  # Early stopping
+  early_stopping_patience: 10 # patience for early stopping
+  early_stopping_metric: "train_loss" # metric for early stopping
+  
+  # ========================================
+  # Sinkhorn Domain Adaptation Settings
+  # ========================================
+  lambda_da: 0.1  # weight for Sinkhorn DA loss
+  sinkhorn_blur: 10.0  # initial blur parameter
+  sinkhorn_p: 2  # l2 distance
+  
+  # Automatically learns optimal balance between CE and DA losses
+  use_trainable_weights: true
+  eta_1_init: 0.1  # initial weight for classification loss
+  eta_2_init: 1.0  # initial weight for DA loss
+  
+  # ========================================
+  # Sigma Scheduling (annealing)
+  # ========================================
+  use_sigma_schedule: true
+  sigma_schedule_type: "exponential"
+  sigma_initial_blur: 10.0  # start with high blur
+  sigma_final_blur: 1.0  # end with lower blur
+  sigma_min_blur: 0.1
+  sigma_decay_rate: 0.95
+  
+  # entropy minimization
+  lambda_entropy: 0.02
+  
+  # ========================================
+  # OT Alignment Loss (OTAlignmentLoss)
+  # ========================================
+  lambda_ot: 0.5
+  
+  ot_lambda_ot: 0.3  # weight for sinkhorn OT distance
+  ot_lambda_match: 0.6  # weight for matched-pair alignment (most important)
+  ot_lambda_topk: 0.1  # weight for top-k worst pairs penalty
+  
+  # sinkhorn algorithm parameters
+  ot_epsilon: 0.05  # regularization
+  ot_n_iter: 50  # sinkhorn iterations
+  
+  # matching algorithm parameters
+  match_epsilon: 0.05  # regularization
+  match_n_iter: 20  # matching iterations
+  ot_topk: 5  # number of worst pairs to penalize
+
+output:
+  root_dir: "experiments"
+
