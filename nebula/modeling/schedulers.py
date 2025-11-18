@@ -10,7 +10,7 @@ def get_sigma_schedule(epoch: int, config) -> float:
     - As sigma -> infinity: closer to MMD (cheaper, less accurate)
 
     Args:
-        epoch: Current epoch number (0-indexed).
+        epoch: Current epoch number (0-indexed, including warmup).
         config: Dataclass config object (DATrainableWeightsSigmaConfig) with schedule parameters.
 
     Returns:
@@ -25,35 +25,43 @@ def get_sigma_schedule(epoch: int, config) -> float:
         - constant: sigma = initial (no decay)
 
     Note: All schedules enforce sigma >= sigma_min_blur to prevent numerical underflow.
+    Note: Epoch is adjusted to exclude warmup epochs (scheduling starts after warmup).
     """
     # Get schedule parameters from dataclass config
     schedule_type = getattr(config, "sigma_schedule_type", "exponential")
     initial_blur = getattr(config, "sigma_initial_blur")
     final_blur = getattr(config, "sigma_final_blur")
     num_epochs = getattr(config, "num_epochs")
+    warmup_epochs = getattr(config, "warmup_epochs", 0)
     min_blur = getattr(config, "sigma_min_blur", 0)
+    
+    # adjust epoch to exclude warmup (scheduling starts after warmup)
+    effective_epoch = max(0, epoch - warmup_epochs)
+    effective_num_epochs = num_epochs - warmup_epochs
+    if effective_num_epochs <= 0:
+        effective_num_epochs = 1
 
     if schedule_type == "exponential":
         decay_rate = getattr(config, "sigma_decay_rate")
-        sigma = initial_blur * (decay_rate**epoch)
+        sigma = initial_blur * (decay_rate**effective_epoch)
 
     elif schedule_type == "linear":
-        progress = min(epoch / max(num_epochs - 1, 1), 1.0)
+        progress = min(effective_epoch / max(effective_num_epochs - 1, 1), 1.0)
         sigma = initial_blur - (initial_blur - final_blur) * progress
 
     elif schedule_type == "cosine":
-        progress = min(epoch / max(num_epochs - 1, 1), 1.0)
+        progress = min(effective_epoch / max(effective_num_epochs - 1, 1), 1.0)
         cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
         sigma = final_blur + (initial_blur - final_blur) * cosine_decay
 
     elif schedule_type == "step":
         step_size = getattr(config, "sigma_step_size")
         step_gamma = getattr(config, "sigma_step_gamma")
-        sigma = initial_blur * (step_gamma ** (epoch // step_size))
+        sigma = initial_blur * (step_gamma ** (effective_epoch // step_size))
 
     elif schedule_type == "polynomial":
         power = getattr(config, "sigma_poly_power")
-        progress = min(epoch / max(num_epochs - 1, 1), 1.0)
+        progress = min(effective_epoch / max(effective_num_epochs - 1, 1), 1.0)
         sigma = (initial_blur - final_blur) * ((1 - progress) ** power) + final_blur
 
     elif schedule_type == "constant":
