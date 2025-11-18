@@ -247,12 +247,26 @@ class OTAlignmentLoss(nn.Module):
         match_mse = self.match_loss(src_feats, tgt_feats)
         topk_term = self.topk_loss(src_feats, tgt_feats)
 
+        self._last_ot = ot
+        self._last_match_mse = match_mse
+        self._last_topk = topk_term
+
         total = (
             self.lambda_ot * ot
             + self.lambda_match * match_mse
             + self.lambda_topk * topk_term
         )
         return total
+
+    def get_component_losses(self) -> dict:
+        """Get the component losses from the last forward pass."""
+        if not hasattr(self, "_last_ot"):
+            return {}
+        return {
+            "ot_loss": self._last_ot,
+            "ot_match_loss": self._last_match_mse,
+            "ot_topk_loss": self._last_topk,
+        }
 
 
 def compute_hard_ot_cost(

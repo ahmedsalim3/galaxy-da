@@ -268,6 +268,12 @@ def build_config(model: torch.nn.Module, config: dict, device: torch.device):
                         DATrainableWeightsSigmaConfig.sigma_final_blur,
                     )
                 ),
+                "sigma_min_blur": float(
+                    train_config.get(
+                        "sigma_min_blur",
+                        DATrainableWeightsSigmaConfig.sigma_min_blur,
+                    )
+                ),
                 "sigma_step_size": int(
                     train_config.get(
                         "sigma_step_size", DATrainableWeightsSigmaConfig.sigma_step_size
@@ -355,8 +361,8 @@ def main():
     model.to(device)
     trainer, trainer_config = build_config(model, config, device)
 
-    use_target = config["training"]["method"] != "baseline"
-    # use_target = True
+    # use_target = config["training"]["method"] != "baseline"
+    use_target = True
     source_train_loader = data_module.source_train_loader
     target_train_loader = data_module.target_train_loader if use_target else None
 
