@@ -68,6 +68,7 @@
               <a href="https://www.linkedin.com/in/stiven-briand-massala-32a283106/">Stiven Briand Massala</a><sup>1</sup>
             </span>
           </div>
+
           <div class="column has-text-centered">
             <div class="publication-links">
               <span class="link-block">
@@ -128,6 +129,73 @@
     </div>
   </div>
 </section>
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">OT-Based Alignment Diagnostics</h2>
+        <div class="content has-text-justified">
+          <p>
+            To better understand how our OT-based top-$k$ loss reshapes the joint latent space, we visualize source–target pairs ranked by their pairwise alignment difficulty. For each source embedding, we compute its minimum Euclidean distance to all target embeddings and record the corresponding matched target. Sorting these row-minima exposes the best- and worst-aligned samples. We display each triplet — the source image, its closest target, and their 2D latent-space embeddings — with a connecting segment whose length reflects alignment difficulty. Before adaptation, hard samples map to distant target regions, revealing inconsistent geometry across domains. After applying our top-$k$ OT regularizer, these high-distance outliers contract significantly, indicating that the loss explicitly targets and corrects the misaligned tail that dominates domain discrepancy.
+          </p>
+
+          <img src="./paper-figures/figure5_ot_alignment.png" alt="ot-alignment" style="width: 100%; display: block; margin-top: 1.5rem; margin-bottom: 1rem;">
+
+          <p style="text-align: center; font-style: italic; font-size: 0.9rem; color: #555; margin-top: -0.5rem;">
+            <strong>Figure 5.</strong> Top-$k$ OT-based alignment diagnostic. Hardest (largest-distance) and easiest (smallest-distance) source→target matches reveal how the alignment loss contracts the worst geometric discrepancies between domains.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Key Contributions</h2>
+        <div class="content has-text-justified">
+          <ul>
+            <li><strong>Top-$k$ Soft Matching:</strong> A novel OT-based alignment loss that focuses on the worst-matched source–target pairs, improving domain adaptation by ~10% over standard alignment methods.</li>
+            <li><strong>Comprehensive Distance Metrics:</strong> Extended GeomLoss with 46 distance metrics from 8 families, enabling systematic evaluation of metric choice on domain alignment.</li>
+            <li><strong>Trainable Alignment Weights:</strong> Learnable loss weighting scheme that adaptively balances supervised and domain-alignment objectives during training.</li>
+            <li><strong>Strong Performance Gains:</strong> Target accuracy improves from 46.8% (baseline) to 87.3% with trainable weights, achieving domain AUC ≈ 0.5 indicating near-perfect latent-space alignment.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Method</h2>
+        <div class="content has-text-justified">
+          <p>
+            Our domain adaptation pipeline combines three key components:
+          </p>
+          <ol>
+            <li><strong>Supervised Loss:</strong> Focal loss with effective-number class weighting to handle imbalanced morphology classes (elliptical/spiral/irregular).</li>
+            <li><strong>Domain Alignment Loss $\mathcal{L}_D$:</strong> Feature-level alignment using distance metrics (Euclidean, Sinkhorn OT, energy distance, Gaussian MMD) computed on L2-normalized embeddings.</li>
+            <li><strong>OT-based Top-$k$ Alignment:</strong> Composite loss $\mathcal{L}_{\text{OT}}$ combining:
+              <ul>
+                <li>Global Sinkhorn OT distance $d_\lambda(p_s, p_t)$</li>
+                <li>Soft matching MSE: $\text{MSE}(z_s, P^\lambda z_t)$ where $P^\lambda$ is the transport plan</li>
+                <li>Top-$k$ penalty: $\frac{1}{k}\sum_{\ell=1}^k d_{(\ell)}$ focusing on worst-aligned examples</li>
+              </ul>
+            </li>
+          </ol>
+          <p>
+            The full objective is $\mathcal{L} = \lambda_{\text{sup}}\mathcal{L}_{\text{sup}} + \lambda_D\mathcal{L}_D + \lambda_{\text{OT}}\mathcal{L}_{\text{OT}}$, where weights can be fixed, trainable, or scheduled during training.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section class="section">
   <div class="container is-max-desktop">
@@ -139,14 +207,25 @@
             Our best-performing model (ResNet-18 with trainable weights and top-$k$ matching) achieves <strong>87.3% accuracy</strong> and <strong>0.626 macro-F1</strong> on the target domain, a dramatic improvement over the baseline (46.8% accuracy, 0.298 macro-F1). The domain AUC of 0.514 indicates near-perfect latent-space alignment where source and target distributions are nearly indistinguishable, while preserving morphological class structure.
           </p>
           <p>
-            All domain adaptation methods show significant improvements over the baseline, with DANN achieving 86.5% accuracy and fixed-$\lambda$ Euclidean reaching 85.0%. The trainable weighting scheme consistently provides the most stable and accurate alignment across all architectures. For complete results including per-class metrics, domain alignment scores, and training dynamics, see the <a href="https://github.com/ahmedsalim3/galaxy-da/tree/main/experiments#results" target="_blank">experiments results page</a>.
+            All domain adaptation methods show significant improvements over the baseline, with DANN achieving 86.5% accuracy and fixed-$\lambda$ Euclidean reaching 85.0%. The trainable weighting scheme consistently provides the most stable and accurate alignment across all architectures.
           </p>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Visualizations</h2>
         <div class="content has-text-justified">          
           <img src="./paper-figures/figure3_latent_space.png" alt="latent-space" style="width: 100%; display: block; margin-bottom: 1rem;">
           <p style="text-align: center; font-style: italic; margin-top: -0.5rem; margin-bottom: 1.5rem;">
             <strong>Latent Space Alignment:</strong> Baseline (left, AUC=1.00) shows distinct domain separation, while Euclidean variants (center/right, AUC≈0.51) achieve effective domain alignment where source and target distributions are indistinguishable.
           </p>
+
           <img src="./paper-figures/figure4_cm_and_metrics.png" alt="cm-metrics" style="width: 100%; display: block; margin-bottom: 1rem;">
           <p style="text-align: center; font-style: italic; margin-top: -0.5rem;">
             <strong>Target Classification Performance:</strong> Confusion matrices and metrics showing the improvement in class separation and overall target accuracy from 46.8% to 87.3%.
