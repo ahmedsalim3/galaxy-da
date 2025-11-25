@@ -1068,7 +1068,7 @@ def _plot_figure6(experiments: dict, output_path: str):
     ot_topk = df["ot_topk_loss"].to_numpy() if "ot_topk_loss" in df.columns else None
     ot_match = df["ot_match_loss"].to_numpy() if "ot_match_loss" in df.columns else None
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     ax_left, ax_right = axes
 
     if ce is not None:
@@ -1100,7 +1100,7 @@ def _plot_figure6(experiments: dict, output_path: str):
         )
 
     ax_left.set_xlabel("Epoch", fontsize=FONT_SIZE_LABEL)
-    ax_left.set_ylabel("Loss value", fontsize=FONT_SIZE_LABEL)
+    ax_left.set_ylabel("Losses", fontsize=FONT_SIZE_LABEL)
     ax_left.yaxis.label.set_fontweight("medium")
     ax_left.grid(True, linestyle="--", alpha=ALPHA_GRID)
     leg_left = ax_left.legend(
@@ -1110,7 +1110,7 @@ def _plot_figure6(experiments: dict, output_path: str):
         leg_left.get_frame().set_edgecolor(LEGEND_FRAME_EDGE)
         leg_left.get_frame().set_linewidth(LEGEND_FRAME_WIDTH)
         leg_left.get_frame().set_alpha(LEGEND_FRAME_ALPHA)
-    ax_left.set_title(f"Supervised vs. Alignment", fontsize=FONT_SIZE_TITLE)
+    # ax_left.set_title(f"Supervised vs. Alignment", fontsize=FONT_SIZE_TITLE)
 
     if ot_total is not None:
         ax_right.plot(
@@ -1141,7 +1141,7 @@ def _plot_figure6(experiments: dict, output_path: str):
         )
 
     ax_right.set_xlabel("Epoch", fontsize=FONT_SIZE_LABEL)
-    ax_right.set_ylabel("OT loss components", fontsize=FONT_SIZE_LABEL)
+    ax_right.set_ylabel(r"$\mathcal{L}_{\mathrm{OT}}$ components", fontsize=FONT_SIZE_LABEL)
     ax_right.yaxis.label.set_fontweight("medium")
     ax_right.grid(True, linestyle="--", alpha=ALPHA_GRID)
     leg_right = ax_right.legend(
@@ -1151,7 +1151,7 @@ def _plot_figure6(experiments: dict, output_path: str):
         leg_right.get_frame().set_edgecolor(LEGEND_FRAME_EDGE)
         leg_right.get_frame().set_linewidth(LEGEND_FRAME_WIDTH)
         leg_right.get_frame().set_alpha(LEGEND_FRAME_ALPHA)
-    ax_right.set_title(f"OT Decomposition", fontsize=FONT_SIZE_TITLE)
+    # ax_right.set_title(f"OT Decomposition", fontsize=FONT_SIZE_TITLE)
 
     fig.tight_layout()
     logger.info(f"Saving figure 6 (OT losses) to {fig_path}")
