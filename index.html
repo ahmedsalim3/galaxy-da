@@ -44,6 +44,28 @@
         margin-top: 5px;
         margin-bottom: 5px;
     }
+
+    @keyframes pulse-glow {
+      0%, 100% {
+        opacity: 0.7;
+        filter: brightness(1);
+      }
+      50% {
+        opacity: 1;
+        filter: brightness(1.3);
+      }
+    }
+
+    .notebook-button {
+      animation: pulse-glow 2s ease-in-out infinite;
+      transition: all 0.3s ease;
+    }
+
+    .notebook-button:hover {
+      animation: none;
+      opacity: 1;
+      filter: brightness(1.2);
+    }
   </style>
 </head>
 <body>
@@ -128,6 +150,80 @@
     </div>
   </div>
 </section>
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">OT-Based Alignment Diagnostics</h2>
+        <div class="content has-text-justified">
+          <p>
+            We visualize source–target pairs ranked by pairwise alignment difficulty to understand how our top-$k$ OT loss reshapes the latent space. For each source embedding, we compute its minimum distance to all target embeddings and identify the best- and worst-aligned samples. The visualization shows source images, their closest target matches, and 2D latent-space projections with connecting segments whose length reflects alignment difficulty. The top-$k$ OT regularizer explicitly targets and corrects the misaligned tail that dominates domain discrepancy.
+          </p>
+          <img src="./paper-figures/figure7_ot_alignment.png" alt="ot-alignment" style="width: 100%; display: block; margin-top: 1.5rem; margin-bottom: 1rem;">
+          <p style="text-align: center; font-style: italic; font-size: 0.9rem; color: #555; margin-top: -0.5rem;">
+            <strong>Figure 1.</strong> Top-$k$ OT-based alignment diagnostic. Hardest (largest-distance) and easiest (smallest-distance) source→target matches reveal how the alignment loss contracts the worst geometric discrepancies between domains.
+          </p>
+          <p style="text-align: center; margin-top: 1rem;">
+            <a href="https://github.com/ahmedsalim3/galaxy-da/blob/main/notebooks/ota_loss.ipynb" target="_blank" class="button is-small is-link notebook-button">
+              View detailed analysis notebook →
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Key Contributions</h2>
+        <div class="content has-text-justified">
+          <ul>
+            <li><strong>Top-$k$ Soft Matching:</strong> A novel OT-based alignment loss that focuses on the worst-matched source–target pairs, improving domain adaptation by ~10% over standard alignment methods.</li>
+            <li><strong>Comprehensive Distance Metrics:</strong> Extended GeomLoss with 46 distance metrics from 8 families, enabling systematic evaluation of metric choice on domain alignment.</li>
+            <li><strong>Trainable Alignment Weights:</strong> Learnable loss weighting scheme that adaptively balances supervised and domain-alignment objectives during training.</li>
+            <li><strong>Strong Performance Gains:</strong> Target accuracy improves from 46.8% (baseline) to 87.3% with trainable weights, achieving domain AUC ≈ 0.5 indicating near-perfect latent-space alignment.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Method</h2>
+        <div class="content has-text-justified">
+          <p>
+            Our domain adaptation pipeline combines three key components:
+          </p>
+          <ol>
+            <li><strong>Supervised Loss:</strong> Focal loss with effective-number class weighting to handle imbalanced morphology classes (elliptical/spiral/irregular).</li>
+            <li><strong>Domain Alignment Loss $\mathcal{L}_D$:</strong> Feature-level alignment using distance metrics (Euclidean, Sinkhorn OT, energy distance, Gaussian MMD) computed on L2-normalized embeddings.</li>
+            <li><strong>OT-based Top-$k$ Alignment:</strong> Composite loss $\mathcal{L}_{\text{OT}}$ combining:
+              <ul>
+                <li>Global Sinkhorn OT distance $d_\lambda(p_s, p_t)$</li>
+                <li>Soft matching MSE: $\text{MSE}(z_s, P^\lambda z_t)$ where $P^\lambda$ is the transport plan</li>
+                <li>Top-$k$ penalty: $\frac{1}{k}\sum_{\ell=1}^k d_{(\ell)}$ focusing on worst-aligned examples</li>
+              </ul>
+            </li>
+          </ol>
+          <p>
+            The full objective is $\mathcal{L} = \lambda_{\text{sup}}\mathcal{L}_{\text{sup}} + \lambda_D\mathcal{L}_D + \lambda_{\text{OT}}\mathcal{L}_{\text{OT}}$, where weights can be fixed, trainable, or scheduled during training.
+          </p>
+          <img src="./paper-figures/figure6_ot_loss.png" alt="ot-loss-training" style="width: 100%; display: block; margin-top: 2rem; margin-bottom: 1rem;">
+          <p style="text-align: center; font-style: italic; font-size: 0.9rem; color: #555; margin-top: -0.5rem;">
+            <strong>Figure 2.</strong> Training dynamics of OT loss components. Left: Supervised ($\mathcal{L}_{\mathrm{sup}}$), domain alignment ($\mathcal{L}_{D}$), and OT ($\mathcal{L}_{\mathrm{OT}}$) losses over epochs. Right: Breakdown of $\mathcal{L}_{\mathrm{OT}}$ into global OT, soft matching ($\mathcal{L}_{\mathrm{match}}$), and top-$k$ ($\mathcal{L}_{\mathrm{top}\text{-}k}$) which averages the $k$ worst-aligned source–target distances.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section class="section">
   <div class="container is-max-desktop">
@@ -145,11 +241,11 @@
         <div class="content has-text-justified">          
           <img src="./paper-figures/figure3_latent_space.png" alt="latent-space" style="width: 100%; display: block; margin-bottom: 1rem;">
           <p style="text-align: center; font-style: italic; margin-top: -0.5rem; margin-bottom: 1.5rem;">
-            <strong>Latent Space Alignment:</strong> Baseline (left, AUC=1.00) shows distinct domain separation, while Euclidean variants (center/right, AUC≈0.51) achieve effective domain alignment where source and target distributions are indistinguishable.
+            <strong>Figure 3.</strong>Latent Space Alignment: Baseline (left, AUC=1.00) shows distinct domain separation, while Euclidean variants (center/right, AUC≈0.51) achieve effective domain alignment where source and target distributions are indistinguishable.
           </p>
           <img src="./paper-figures/figure4_cm_and_metrics.png" alt="cm-metrics" style="width: 100%; display: block; margin-bottom: 1rem;">
           <p style="text-align: center; font-style: italic; margin-top: -0.5rem;">
-            <strong>Target Classification Performance:</strong> Confusion matrices and metrics showing the improvement in class separation and overall target accuracy from 46.8% to 87.3%.
+            <strong>Figure 4.</strong>Target Classification Performance: Confusion matrices and metrics showing the improvement in class separation and overall target accuracy from 46.8% to 87.3%.
           </p>
         </div>
       </div>
