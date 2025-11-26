@@ -1,12 +1,24 @@
-Domain Adaptation In Galaxy Morphology
-======================================
+From Simulations to Surveys: Domain Adaptation for Galaxy Observations
+======================================================================
 
-Domain Adaptation for Galaxy Morphology Classification using llustrisTNG and Galaxy Zoo Evolution dataset
+<div align="center">
 
+[arXiv](https://arxiv.org/abs/2511.18590) | [Dataset](https://zenodo.org/records/17434016) | [Page](https://ahmedsalim3.github.io/galaxy-da)
+
+</div>
+
+<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+  <div style="flex: 1; min-width: 300px;">
+    <img src="./paper-figures/figure2_training.png" alt="train-log" style="width: 100%; height: 90%;">
+  </div>
+  <div style="flex: 1; min-width: 300px;">
+    <img src="./paper-figures/figure6_ot_loss.png" alt="ot-loss" style="width: 100%; height: 90%;">
+  </div>
+</div>
 
 ## Abstract
 
-Large photometric surveys will image billions of galaxies, but we currently lack quick, reliable automated ways to infer their physical properties like morphology, stellar mass, and star formation rates. Simulations provide galaxy images with ground-truth physical labels, but domain shifts in PSF, noise, backgrounds, selection, and label priors degrade transfer to real surveys. We present a preliminary domain adaptation pipeline that trains on simulated TNG50 galaxies and evaluates on real SDSS galaxies with morphology labels (elliptical/spiral/irregular). We train three backbones (CNN, $E(2)$-steerable CNN, ResNet-18) with focal loss and effective-number class weighting, and a feature-level domain loss $\mathcal{L}_D$ built from [GeomLoss](./geomloss/) (entropic Sinkhorn OT, energy distance, Gaussian MMD, and related metrics). We show that a combination of these losses with an OT-based “top-$k$ soft matching’’ loss that focuses $\mathcal{L}_D$ on the worst-matched source–target pairs can further enhance domain alignment. With Euclidean distance, scheduled alignment weights, and top-$k$ matching, target accuracy rises from ~61% (no adaptation) to ~86–89%, with a ~17-point gain in macro–F1 and a domain AUC near 0.5, indicating strong latent-space mixing.
+Large photometric surveys will image billions of galaxies, but we currently lack quick, reliable automated ways to infer their physical properties like morphology, stellar mass, and star formation rates. Simulations provide galaxy images with ground-truth physical labels, but domain shifts in PSF, noise, backgrounds, selection, and label priors degrade transfer to real surveys. We present a preliminary domain adaptation pipeline that trains on simulated TNG50 galaxies and evaluates on real SDSS galaxies with morphology labels (elliptical/spiral/irregular). We train three backbones (CNN, $E(2)$-steerable CNN, ResNet-18) with focal loss and effective-number class weighting, and a feature-level domain loss $\mathcal{L}_D$ built from [GeomLoss](./geomloss/) (entropic Sinkhorn OT, energy distance, Gaussian MMD, and related metrics). We show that a combination of these losses with an OT-based "top-$k$ soft matching" loss that focuses $\mathcal{L}_D$ on the worst-matched source–target pairs can further enhance domain alignment. With Euclidean distance, scheduled alignment weights, and top-$k$ matching, target accuracy rises from ~61% (no adaptation) to ~86–89%, with a ~17-point gain in macro–F1 and a domain AUC near 0.5, indicating strong latent-space mixing.
 
 ![latent-space](./paper-figures/figure3_latent_space.png)
 
@@ -75,12 +87,27 @@ The [experiments](./experiments/README.md) directory contains the paper experime
 
 ## Paper Figures
 
-The [paper-figures](./paper/paper-figures/) directory contains all the figures used in the paper. To reproduce the paper plots, run:
+The [paper-figures](./paper-figures/) directory contains all the figures used in the paper. To reproduce the paper plots, run:
 
 ```sh
 python3 scripts/make_paper_figures.py experiments
 ```
 
+
+## Citation
+
+```
+@misc{brauer2025simulationssurveysdomainadaptation,
+      title={From Simulations to Surveys: Domain Adaptation for Galaxy Observations}, 
+      author={Kaley Brauer and Aditya Prasad Dash and Meet J. Vyas and Ahmed Salim and Stiven Briand Massala},
+      year={2025},
+      eprint={2511.18590},
+      archivePrefix={arXiv},
+      primaryClass={astro-ph.GA},
+      url={https://arxiv.org/abs/2511.18590}, 
+}
+```
+
 ## About This Project
 
-This project was made possible through the [2025 IAIFI Summer School](https://github.com/iaifi/summer-school-2025) provided by The [NSF AI](https://iaifi.org/) Institute for Artificial Intelligence and Fundamental Interactions (IAIFI). This work was presented at the Machine Learning and the Physical Sciences Workshop @ [NeurIPS 2025](https://neurips.cc/)
+This project was made possible through the [2025 IAIFI Summer School](https://iaifi.org/phd-summer-school.html) provided by The [NSF AI](https://iaifi.org/) Institute for Artificial Intelligence and Fundamental Interactions (IAIFI). This work will be presented at the Machine Learning and the Physical Sciences Workshop @ [NeurIPS 2025](https://ml4physicalsciences.github.io/2025/)

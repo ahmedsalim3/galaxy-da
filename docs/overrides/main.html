@@ -1,0 +1,87 @@
+<!-- template was taken from https://github.com/nerfies/nerfies.github.io -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="From Simulations to Surveys: Domain Adaptation for Galaxy Observations">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>From Simulations to Surveys: Domain Adaptation for Galaxy Observations</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <style>
+    body {
+      font-family: 'Noto Sans', sans-serif;
+    }
+
+    .publication-title {
+        font-family: 'Google Sans', sans-serif;
+    }
+
+    .publication-authors {
+        font-family: 'Google Sans', sans-serif;
+    }
+
+    .publication-authors a {
+       color: hsl(204, 86%, 53%) !important;
+    }
+
+    .publication-authors a:hover {
+        text-decoration: underline;
+    }
+
+    .author-block {
+      display: inline-block;
+    }
+
+    .link-block a {
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% {
+        opacity: 0.7;
+        filter: brightness(1);
+      }
+      50% {
+        opacity: 1;
+        filter: brightness(1.3);
+      }
+    }
+
+    .notebook-button {
+      animation: pulse-glow 2s ease-in-out infinite;
+      transition: all 0.3s ease;
+    }
+
+    .notebook-button:hover {
+      animation: none;
+      opacity: 1;
+      filter: brightness(1.2);
+    }
+  </style>
+</head>
+<body>
+
+{{ page.content }}
+
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+</body>
+</html>

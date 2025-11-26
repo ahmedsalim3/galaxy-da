@@ -1,13 +1,201 @@
-# From Simulations to Surveys: Domain Adaptation for Galaxy Observations
-
+---
+template: main.html
 ---
 
-## Abstract
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">From Simulations to Surveys: Domain Adaptation for Galaxy Observations</h1>
+          <h1>Machine Learning and the Physical Sciences Workshop, NeurIPS 2025.</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://www.kaleybrauer.com/">Kaley Brauer</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://www.linkedin.com/in/aditya-prasad-dash-b700b7146/">Aditya Prasad Dash</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://meet-vyas-dev.github.io/">Meet J. Vyas</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://ahmedsalim3.github.io/">Ahmed Salim</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://www.linkedin.com/in/stiven-briand-massala-32a283106/">Stiven Briand Massala</a><sup>1</sup>
+            </span>
+          </div>
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2511.18590"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2511.18590"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://github.com/ahmedsalim3/galaxy-da"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>
+              <span class="link-block">
+                <a href="https://zenodo.org/records/17434016"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-database"></i>
+                  </span>
+                  <span>Dataset</span>
+                  </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-Large photometric surveys will image billions of galaxies, but we currently lack quick, reliable automated ways to infer their physical properties like morphology, stellar mass, and star formation rates. Simulations provide galaxy images with ground-truth physical labels, but domain shifts in PSF, noise, backgrounds, selection, and label priors degrade transfer to real surveys. We present a preliminary domain adaptation pipeline that trains on simulated TNG50 galaxies and evaluates on real SDSS galaxies with morphology labels (elliptical/spiral/irregular). We train three backbones (CNN, $E(2)$-steerable CNN, ResNet-18) with focal loss and effective-number class weighting, and a feature-level domain loss $\mathcal{L}_D$ built from GeomLoss (entropic Sinkhorn OT, energy distance, Gaussian MMD, and related metrics). We show that a combination of these losses with an OT-based "top-$k$ soft matching" loss that focuses $\mathcal{L}_D$ on the worst-matched source–target pairs can further enhance domain alignment. With Euclidean distance, scheduled alignment weights, and top-$k$ matching, target accuracy rises from ~61% (no adaptation) to ~86–89%, with a ~17-point gain in macro–F1 and a domain AUC near 0.5, indicating strong latent-space mixing.
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Large photometric surveys will image billions of galaxies, but we currently lack quick, reliable automated ways to infer their physical properties like morphology, stellar mass, and star formation rates. Simulations provide galaxy images with ground-truth physical labels, but domain shifts in PSF, noise, backgrounds, selection, and label priors degrade transfer to real surveys. We present a preliminary domain adaptation pipeline that trains on simulated TNG50 galaxies and evaluates on real SDSS galaxies with morphology labels (elliptical/spiral/irregular). We train three backbones (CNN, $E(2)$-steerable CNN, ResNet-18) with focal loss and effective-number class weighting, and a feature-level domain loss $\mathcal{L}_D$ built from GeomLoss (entropic Sinkhorn OT, energy distance, Gaussian MMD, and related metrics). We show that a combination of these losses with an OT-based "top-$k$ soft matching" loss that focuses $\mathcal{L}_D$ on the worst-matched source–target pairs can further enhance domain alignment. With Euclidean distance, scheduled alignment weights, and top-$k$ matching, target accuracy rises from ~61% (no adaptation) to ~86–89%, with a ~17-point gain in macro–F1 and a domain AUC near 0.5, indicating strong latent-space mixing.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">OT-Based Alignment Diagnostics</h2>
+        <div class="content has-text-justified">
+          <p>
+            We visualize source–target pairs ranked by pairwise alignment difficulty to understand how our top-$k$ OT loss reshapes the latent space. For each source embedding, we compute its minimum distance to all target embeddings and identify the best- and worst-aligned samples. The visualization shows source images, their closest target matches, and 2D latent-space projections with connecting segments whose length reflects alignment difficulty. The top-$k$ OT regularizer explicitly targets and corrects the misaligned tail that dominates domain discrepancy.
+          </p>
+          <img src="./paper-figures/figure7_ot_alignment.png" alt="ot-alignment" style="width: 100%; display: block; margin-top: 1.5rem; margin-bottom: 1rem;">
+          <p style="text-align: center; font-style: italic; font-size: 0.9rem; color: #555; margin-top: -0.5rem;">
+            <strong>Figure 1.</strong> Top-$k$ OT-based alignment diagnostic. Hardest (largest-distance) and easiest (smallest-distance) source→target matches reveal how the alignment loss contracts the worst geometric discrepancies between domains.
+          </p>
+          <p style="text-align: center; margin-top: 1rem;">
+            <a href="https://github.com/ahmedsalim3/galaxy-da/blob/main/notebooks/ota_loss.ipynb" target="_blank" class="button is-small is-link notebook-button">
+              View detailed analysis notebook →
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
----
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Key Contributions</h2>
+        <div class="content has-text-justified">
+          <ul>
+            <li><strong>Top-$k$ Soft Matching:</strong> A novel OT-based alignment loss that focuses on the worst-matched source–target pairs, improving domain adaptation by ~10% over standard alignment methods.</li>
+            <li><strong>Comprehensive Distance Metrics:</strong> Extended GeomLoss with 46 distance metrics from 8 families, enabling systematic evaluation of metric choice on domain alignment.</li>
+            <li><strong>Trainable Alignment Weights:</strong> Learnable loss weighting scheme that adaptively balances supervised and domain-alignment objectives during training.</li>
+            <li><strong>Strong Performance Gains:</strong> Target accuracy improves from 46.8% (baseline) to 87.3% with trainable weights, achieving domain AUC ≈ 0.5 indicating near-perfect latent-space alignment.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-## About
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Method</h2>
+        <div class="content has-text-justified">
+          <p>
+            Our domain adaptation pipeline combines three key components:
+          </p>
+          <ol>
+            <li><strong>Supervised Loss:</strong> Focal loss with effective-number class weighting to handle imbalanced morphology classes (elliptical/spiral/irregular).</li>
+            <li><strong>Domain Alignment Loss $\mathcal{L}_D$:</strong> Feature-level alignment using distance metrics (Euclidean, Sinkhorn OT, energy distance, Gaussian MMD) computed on L2-normalized embeddings.</li>
+            <li><strong>OT-based Top-$k$ Alignment:</strong> Composite loss $\mathcal{L}_{\text{OT}}$ combining:
+              <ul>
+                <li>Global Sinkhorn OT distance $d_\lambda(p_s, p_t)$</li>
+                <li>Soft matching MSE: $\text{MSE}(z_s, P^\lambda z_t)$ where $P^\lambda$ is the transport plan</li>
+                <li>Top-$k$ penalty: $\frac{1}{k}\sum_{\ell=1}^k d_{(\ell)}$ focusing on worst-aligned examples</li>
+              </ul>
+            </li>
+          </ol>
+          <p>
+            The full objective is $\mathcal{L} = \lambda_{\text{sup}}\mathcal{L}_{\text{sup}} + \lambda_D\mathcal{L}_D + \lambda_{\text{OT}}\mathcal{L}_{\text{OT}}$, where weights can be fixed, trainable, or scheduled during training.
+          </p>
+          <img src="./paper-figures/figure6_ot_loss.png" alt="ot-loss-training" style="width: 100%; display: block; margin-top: 2rem; margin-bottom: 1rem;">
+          <p style="text-align: center; font-style: italic; font-size: 0.9rem; color: #555; margin-top: -0.5rem;">
+            <strong>Figure 2.</strong> Training dynamics of OT loss components. Left: Supervised ($\mathcal{L}_{\mathrm{sup}}$), domain alignment ($\mathcal{L}_{D}$), and OT ($\mathcal{L}_{\mathrm{OT}}$) losses over epochs. Right: Breakdown of $\mathcal{L}_{\mathrm{OT}}$ into global OT, soft matching ($\mathcal{L}_{\mathrm{match}}$), and top-$k$ ($\mathcal{L}_{\mathrm{top}\text{-}k}$) which averages the $k$ worst-aligned source–target distances.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-This project was made possible through the [2025 IAIFI Summer School](https://github.com/iaifi/summer-school-2025) provided by The [NSF AI](https://iaifi.org/) Institute for Artificial Intelligence and Fundamental Interactions (IAIFI). This work was presented at the Machine Learning and the Physical Sciences Workshop @ [NeurIPS 2025](https://neurips.cc/)
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Results</h2>
+        <div class="content has-text-justified">
+          <p>
+            Our best-performing model (ResNet-18 with trainable weights and top-$k$ matching) achieves <strong>87.3% accuracy</strong> and <strong>0.626 macro-F1</strong> on the target domain, a dramatic improvement over the baseline (46.8% accuracy, 0.298 macro-F1). The domain AUC of 0.514 indicates near-perfect latent-space alignment where source and target distributions are nearly indistinguishable, while preserving morphological class structure.
+          </p>
+          <p>
+            All domain adaptation methods show significant improvements over the baseline, with DANN achieving 86.5% accuracy and fixed-$\lambda$ Euclidean reaching 85.0%. The trainable weighting scheme consistently provides the most stable and accurate alignment across all architectures. For complete results including per-class metrics, domain alignment scores, and training dynamics, see the <a href="https://github.com/ahmedsalim3/galaxy-da/tree/main/experiments#results" target="_blank">experiments results page</a>.
+          </p>
+        </div>
+        <div class="content has-text-justified">          
+          <img src="./paper-figures/figure3_latent_space.png" alt="latent-space" style="width: 100%; display: block; margin-bottom: 1rem;">
+          <p style="text-align: center; font-style: italic; margin-top: -0.5rem; margin-bottom: 1.5rem;">
+            <strong>Figure 3.</strong>Latent Space Alignment: Baseline (left, AUC=1.00) shows distinct domain separation, while Euclidean variants (center/right, AUC≈0.51) achieve effective domain alignment where source and target distributions are indistinguishable.
+          </p>
+          <img src="./paper-figures/figure4_cm_and_metrics.png" alt="cm-metrics" style="width: 100%; display: block; margin-bottom: 1rem;">
+          <p style="text-align: center; font-style: italic; margin-top: -0.5rem;">
+            <strong>Figure 4.</strong>Target Classification Performance: Confusion matrices and metrics showing the improvement in class separation and overall target accuracy from 46.8% to 87.3%.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@misc{brauer2025simulationssurveysdomainadaptation,
+      title={From Simulations to Surveys: Domain Adaptation for Galaxy Observations}, 
+      author={Kaley Brauer and Aditya Prasad Dash and Meet J. Vyas and Ahmed Salim and Stiven Briand Massala},
+      year={2025},
+      eprint={2511.18590},
+      archivePrefix={arXiv},
+      primaryClass={astro-ph.GA},
+      url={https://arxiv.org/abs/2511.18590}, 
+}</code></pre>
+  </div>
+</section>
