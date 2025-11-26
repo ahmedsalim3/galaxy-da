@@ -3,7 +3,7 @@ From Simulations to Surveys: Domain Adaptation for Galaxy Observations
 
 <div align="center">
 
-[arXiv](https://arxiv.org/abs/2511.18590) | [Dataset](https://zenodo.org/records/17434016) | [Page](https://ahmedsalim3.github.io/galaxy-da)
+[Paper](https://ml4physicalsciences.github.io/2025/files/NeurIPS_ML4PS_2025_265.pdf) | [arXiv](https://arxiv.org/abs/2511.18590) | [Dataset](https://zenodo.org/records/17434016) | [Page](https://ahmedsalim3.github.io/galaxy-da) | [Poster](https://neurips.cc/media/PosterPDFs/NeurIPS%202025/123052.png)
 
 </div>
 
